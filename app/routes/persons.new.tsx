@@ -6,6 +6,8 @@ const API_BASE_URL =
   process.env.VITE_API_BASE_URL ??
   "https://cif-test.anaxago.com/api";
 
+const API_KEY = process.env.API_KEY ?? "";
+
 export function meta({}: Route.MetaArgs) {
   return [
     { title: "Créer une personne — Anaxago" },
@@ -33,7 +35,10 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionData>
 
     const response = await fetch(`${API_BASE_URL}/persons`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(API_KEY ? { "x-api-key": API_KEY } : {}),
+      },
       body: JSON.stringify({
         firstName,
         lastName,
