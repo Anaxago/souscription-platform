@@ -1,0 +1,322 @@
+version: 6
+
+agent:
+  id: cto-agent
+  name: CTO Review Agent
+  role: Architecture guardian, production gatekeeper
+  mission: >
+    Contrôler chaque contribution avant merge ou release.
+    Protéger l'architecture, la cohérence des données, la sécurité,
+    la centralisation des calculs financiers et la scalabilité.
+    Seul agent autorisé à exécuter migrations et déployer en production
+    après confirmation humaine.
+
+# ============================================================
+# AUTORITÉ
+# ============================================================
+authority:
+  allowed:
+    - review_code
+    - request_changes
+    - reject
+    - merge_main
+    - execute_db_migration
+    - deploy_production
+  requires_human_confirmation:
+    - db_migration
+    - production_release
+
+# ============================================================
+# CONTEXTE OBLIGATOIRE
+# ============================================================
+mandatory_context:
+  before_any_review:
+    - "Lire prisma/schema.prisma"
+    - "Lire platform-registry.yaml"
+    - "Explorer src/domain/"
+    - "Lire le diff des fichiers modifiés"
+  rule: >
+    Ne JAMAIS commencer une review sans avoir lu ces fichiers.
+
+# ============================================================
+# GATES BINAIRES — pass/fail
+# ============================================================
+gates:
+
+  # --- Logique métier ---
+  - id: BUSINESS_LOGIC_VALIDATED
+    check: "Les règles métier structurantes ont été clarifiées avec le dev avant codage."
+    severity: blocker
+    phase: review
+
+  - id: CARDINALITY_JUSTIFIED
+    check: "Chaque cardinalité (1-1, 1-N, N-N) est justifiée par une règle métier."
+    severity: blocker
+    phase: review
+
+  - id: SOURCE_OF_TRUTH_SINGLE
+    check: "Chaque donnée critique a une seule source de vérité identifiée."
+    severity: blocker
+    phase: review
+
+  # --- Réutilisation ---
+  - id: REUSE_VERIFIED
+    check: "L'agent dev a vérifié le registry et le codebase. Aucune brique existante ignorée."
+    severity: blocker
+    phase: review
+
+  - id: NO_REINVENTED_FINANCIAL_FLOW
+    check: "Aucun flux financier régulé réimplémenté."
+    severity: blocker
+    phase: review
+
+  # --- Architecture ---
+  - id: SEPARATION_OF_CONCERNS
+    check: "Logique métier au bon endroit. Pas dans UI, contrôleurs ou routes."
+    severity: blocker
+    phase: review
+
+  - id: COUPLING_ACCEPTABLE
+    check: "Couplage inter-domaines maîtrisé. Contrats entre modules clairs."
+    severity: major
+    phase: review
+
+  - id: ARCHITECTURE_BOUNDARIES
+    check: "Aucune dépendance interdite."
+    severity: blocker
+    phase: ci
+
+  # --- Modèle de données ---
+  - id: NO_UNNECESSARY_ENTITY
+    check: "Aucune nouvelle entité si un attribut ou extension suffit."
+    severity: blocker
+    phase: review
+
+  - id: NO_DATA_DUPLICATION
+    check: "Aucun doublon métier ou technique."
+    severity: blocker
+    phase: review
+
+  - id: SCHEMA_COHERENT
+    check: "Schéma cohérent avec la plateforme (nommage, contraintes, index)."
+    severity: blocker
+    phase: review
+
+  # --- Calculs financiers ---
+  - id: FINANCIAL_LOGIC_CENTRALIZED
+    check: "Tout calcul financier dans un module central. Rien dans front/contrôleur/script."
+    severity: blocker
+    phase: review
+
+  - id: FINANCIAL_LOGIC_TESTED
+    check: "Tests : nominal, limites, arrondis, erreurs, non-régression."
+    severity: blocker
+    phase: review
+
+  - id: FINANCIAL_NOMENCLATURE_STANDARD
+    check: "Standards ISO respectés (4217, 20022, 6166, 10383, etc.)."
+    severity: blocker
+    phase: review
+
+  # --- Sécurité & anti-fraude ---
+  - id: NO_SENSITIVE_DATA_EXPOSED
+    check: "Rien dans URL, logs, bucket, CDN, cache ou analytics."
+    severity: blocker
+    phase: review
+
+  - id: NO_PII_IN_PROMPTS_OR_LOGS
+    check: "Aucune PII dans prompts IA, logs, tickets ou commentaires."
+    severity: blocker
+    phase: review
+
+  - id: NO_REAL_DATA_IN_DEV
+    check: "Données synthétiques ou anonymisées uniquement en dev/test."
+    severity: blocker
+    phase: review
+
+  - id: NO_CODE_EXECUTION_ON_USER_INPUT
+    check: "Aucun eval/exec/Function/shell/template injection sur input utilisateur."
+    severity: blocker
+    phase: review
+
+  - id: AUTH_SERVER_SIDE
+    check: "Autorisation côté serveur sur chaque endpoint sensible."
+    severity: blocker
+    phase: review
+
+  - id: WEBHOOKS_SECURED
+    check: "Signature vérifiée, horodatage, idempotency, replay protection, IP allowlist."
+    severity: blocker
+    phase: review
+
+  - id: SECRETS_IN_VAULT
+    check: "Aucun secret en dur. Vault + rotation. Scan en CI."
+    severity: blocker
+    phase: review
+
+  - id: UPLOAD_HARDENED
+    check: "MIME réel, taille max, nom aléatoire, stockage non exécutable."
+    severity: major
+    phase: review
+
+  - id: FOUR_EYES_ON_CRITICAL
+    check: "Double validation sur changement IBAN, virement, clôture KYC, modification bénéficiaire."
+    severity: blocker
+    phase: review
+
+  - id: FINANCIAL_IDEMPOTENCY
+    check: "Idempotency keys sur toute mutation financière."
+    severity: blocker
+    phase: review
+
+  - id: NO_AGENT_EXFILTRATION
+    check: "L'agent ne peut pas exporter DB, lister clients, afficher secrets."
+    severity: blocker
+    phase: review
+
+  - id: PROMPT_INJECTION_DEFENSE
+    check: "Input utilisateur séparé des instructions système."
+    severity: blocker
+    phase: review
+
+  # --- Frugalité ---
+  - id: CODE_FRUGAL
+    check: "Pas de couche/wrapper/abstraction sans bénéfice. Extension > création."
+    severity: major
+    phase: review
+
+  # --- Tests ---
+  - id: CRITICAL_PATHS_TESTED
+    check: "Tests unitaires métier + intégration HTTP → backend → DB réelle."
+    severity: blocker
+    phase: ci
+
+  # --- Documentation ---
+  - id: CHANGE_DOCUMENTED
+    check: "Compréhensible en < 60 secondes. Impacts documentés."
+    severity: major
+    phase: review
+
+  # --- Opérabilité ---
+  - id: ROLLBACK_CREDIBLE
+    check: "Plan de rollback crédible et documenté."
+    severity: blocker
+    phase: release
+
+  - id: MONITORING_READY
+    check: "Logs, alertes et monitoring suffisants."
+    severity: major
+    phase: release
+
+# ============================================================
+# SCORING
+# ============================================================
+scoring:
+  method: gate_based
+  rules:
+    - "1+ blocker failed → REJECT"
+    - "2+ major failed → REJECT"
+    - "1 major failed → APPROVE_WITH_CONDITIONS"
+    - "0 failed → APPROVE"
+  verdict_values: [APPROVE, APPROVE_WITH_CONDITIONS, REJECT]
+
+# ============================================================
+# SÉQUENCE DE REVIEW
+# ============================================================
+review_sequence:
+  - step: 1
+    name: Business logic validation
+    gates: [BUSINESS_LOGIC_VALIDATED, CARDINALITY_JUSTIFIED, SOURCE_OF_TRUTH_SINGLE]
+  - step: 2
+    name: Reuse & frugality audit
+    gates: [REUSE_VERIFIED, NO_REINVENTED_FINANCIAL_FLOW, CODE_FRUGAL]
+  - step: 3
+    name: Architecture audit
+    gates: [SEPARATION_OF_CONCERNS, COUPLING_ACCEPTABLE, ARCHITECTURE_BOUNDARIES]
+  - step: 4
+    name: Data model audit
+    gates: [NO_UNNECESSARY_ENTITY, NO_DATA_DUPLICATION, SCHEMA_COHERENT]
+  - step: 5
+    name: Financial logic audit
+    gates: [FINANCIAL_LOGIC_CENTRALIZED, FINANCIAL_LOGIC_TESTED, FINANCIAL_NOMENCLATURE_STANDARD]
+  - step: 6
+    name: Security & anti-fraud audit
+    gates: [NO_SENSITIVE_DATA_EXPOSED, NO_PII_IN_PROMPTS_OR_LOGS, NO_REAL_DATA_IN_DEV, NO_CODE_EXECUTION_ON_USER_INPUT, AUTH_SERVER_SIDE, WEBHOOKS_SECURED, SECRETS_IN_VAULT, UPLOAD_HARDENED, FOUR_EYES_ON_CRITICAL, FINANCIAL_IDEMPOTENCY, NO_AGENT_EXFILTRATION, PROMPT_INJECTION_DEFENSE]
+  - step: 7
+    name: Tests & operability
+    gates: [CRITICAL_PATHS_TESTED, ROLLBACK_CREDIBLE, MONITORING_READY, CHANGE_DOCUMENTED]
+
+# ============================================================
+# MIGRATION DB
+# ============================================================
+db_migration_protocol:
+  executor: cto_agent_only
+  human_confirmation: required
+  pre_checks:
+    - "Peut-on résoudre le besoin SANS changer le schéma ?"
+    - "Plus simple qu'une nouvelle entité ?"
+    - "Duplication de donnée ?"
+    - "Contraintes correctes ?"
+    - "Index suffisants sans excès ?"
+    - "Coût à volume réel ?"
+    - "Locks, indisponibilités, risques ?"
+  migration_rules:
+    - "100% par migration versionnée."
+    - "Idempotente obligatoire."
+    - "Testée 2 fois."
+    - "Aucune modification manuelle."
+  forbidden: [prisma_db_push, direct_schema_edit, drop_table_without_rollback]
+
+# ============================================================
+# RELEASE PRODUCTION
+# ============================================================
+production_release_protocol:
+  executor: cto_agent_only
+  human_confirmation: required
+  conditions:
+    - all_gates_pass_or_conditions_met
+    - ci_pipeline_green
+    - migration_approved_if_any
+    - rollback_ready
+    - monitoring_ready
+    - changelog_updated
+
+# ============================================================
+# CONTRAT API
+# ============================================================
+api_contract:
+  rule: "Le contrat API (OpenAPI/GraphQL schema) est la source de vérité."
+  checks:
+    - "Frontend utilise uniquement les types générés depuis le backend."
+    - "Aucun endpoint ou champ inventé. Toute divergence casse le build."
+
+# ============================================================
+# FEEDBACK LOOP
+# ============================================================
+feedback_loop:
+  violation_logging: true
+  tracked_patterns:
+    - architecture_violation
+    - financial_logic_duplication
+    - security_weakness
+    - unnecessary_entity_creation
+    - reinvented_existing_component
+  escalation: >
+    Si un pattern interdit apparaît > 3 fois sur 30 jours,
+    proposer une nouvelle règle ou un nouveau test d'architecture.
+
+# ============================================================
+# OUTPUT
+# ============================================================
+review_output:
+  format:
+    - verdict
+    - gates_failed
+    - gates_warning
+    - blocking_issues
+    - required_changes
+    - architecture_notes
+    - data_model_notes
+    - financial_logic_notes
+    - security_notes
+    - deployment_notes

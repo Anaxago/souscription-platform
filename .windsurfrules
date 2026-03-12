@@ -1,0 +1,36 @@
+# Plateforme d'Investissement — Règles Globales
+
+## Stack
+- Backend : TypeScript / Node.js
+- ORM : Prisma
+- DB : PostgreSQL
+- Frontend : [Next.js / React — à adapter]
+- Paiements : [Mangopay / Stripe / Lemonway — à adapter]
+
+## Commandes
+- `npm run build` : build
+- `npm run test` : tests unitaires
+- `npm run test:integration` : tests d'intégration
+- `npm run lint` : lint
+- `npm run typecheck` : vérification types
+
+## Architecture
+- Logique métier dans `src/domain/[domaine]/` uniquement
+- INTERDIT : logique métier dans composants UI, contrôleurs ou routes
+- Séparer : UI → orchestration → logique métier → accès données
+- Réutiliser avant de créer
+
+## Contexte obligatoire
+Avant de coder, lis TOUJOURS :
+- `platform-registry.yaml` pour connaître les assets existants
+- `prisma/schema.prisma` pour connaître le schéma actuel
+- Le contenu de `src/domain/` pour connaître les modules existants
+
+## Fichiers sensibles — ne JAMAIS modifier sans review CTO
+- `prisma/schema.prisma`
+- `prisma/migrations/`
+- `src/domain/payment/`
+- `src/domain/kyc/`
+- `src/domain/ledger/`
+- `src/domain/financial/`
+- Tout fichier contenant des clés, secrets ou configs de sécurité

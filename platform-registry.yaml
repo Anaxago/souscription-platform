@@ -1,0 +1,221 @@
+version: 1
+
+# ================================================================
+# REGISTRE CENTRAL DES ASSETS RÉUTILISABLES
+# ================================================================
+# Les agents IA DOIVENT consulter ce fichier AVANT de créer
+# un nouveau composant, service, calcul ou entité.
+#
+# Si une ressource existe ici, elle DOIT être réutilisée.
+# Toute création sans vérification = rejet en review CTO.
+#
+# MAINTENANCE : mettre à jour ce fichier à chaque ajout de module.
+# ================================================================
+
+# ============================================================
+# ENTITÉS MÉTIER — sources de vérité
+# ============================================================
+# À REMPLIR avec vos vraies entités.
+# Exemple pour une plateforme d'investissement :
+
+data_entities:
+
+  - name: Investor
+    table: investors
+    source_of_truth: internal_db
+    description: "Investisseur inscrit sur la plateforme"
+    owner: domain/investor
+    sensitive_fields: [email, phone, address, national_id]
+
+  - name: InvestmentVehicle
+    table: investment_vehicles
+    source_of_truth: internal_db
+    description: "Enveloppe d'investissement (fonds, SPV, club deal)"
+    owner: domain/investment
+
+  - name: FinancialInstrument
+    table: financial_instruments
+    source_of_truth: internal_db
+    identifiers: [ISIN, CFI, FISN]
+    description: "Support financier identifié par ISIN"
+    owner: domain/instrument
+
+  - name: Position
+    table: positions
+    source_of_truth: internal_db
+    description: "Position détenue par un investisseur sur un instrument"
+    owner: domain/position
+
+  - name: Transaction
+    table: transactions
+    source_of_truth: ledger
+    description: "Mouvement financier enregistré dans le ledger — IMMUTABLE"
+    owner: domain/ledger
+
+  - name: PaymentOrder
+    table: payment_orders
+    source_of_truth: psp_callback
+    description: "Ordre de paiement envoyé au PSP"
+    owner: domain/payment
+
+  # AJOUTEZ VOS ENTITÉS ICI :
+  # - name: ...
+  #   table: ...
+  #   source_of_truth: ...
+  #   description: ...
+  #   owner: ...
+
+# ============================================================
+# MODULES FINANCIERS — ne JAMAIS dupliquer
+# ============================================================
+# Tout calcul financier DOIT passer par un de ces modules.
+# Si un module n'existe pas encore, le créer ICI avant de coder.
+
+financial_modules:
+
+  - name: LedgerService
+    path: src/domain/ledger/
+    responsibility: "Tenue de registre, écritures, soldes"
+    rules: [immutable_entries, double_entry, idempotent]
+
+  - name: ReconciliationService
+    path: src/domain/reconciliation/
+    responsibility: "Réconciliation PSP ↔ ledger ↔ positions"
+
+  - name: PaymentOrchestrator
+    path: src/domain/payment/
+    responsibility: "Orchestration des flux de paiement via PSP"
+
+  - name: FinancialCalculations
+    path: src/domain/financial/calculations/
+    responsibility: "Valorisation, rendement, frais, arrondis"
+
+  # AJOUTEZ VOS MODULES ICI :
+  # - name: ...
+  #   path: ...
+  #   responsibility: ...
+
+# ============================================================
+# SERVICES BACKEND PARTAGÉS
+# ============================================================
+
+backend_services:
+
+  - name: AuthService
+    path: src/domain/auth/
+    responsibility: "Authentification, tokens, MFA"
+
+  - name: AuthorizationService
+    path: src/domain/authorization/
+    responsibility: "RBAC, permissions, contrôle d'accès"
+
+  - name: DocumentService
+    path: src/domain/document/
+    responsibility: "Stockage documents, URLs signées, accès contrôlé"
+
+  - name: NotificationService
+    path: src/domain/notification/
+    responsibility: "Emails, push, webhooks sortants"
+
+  - name: KycService
+    path: src/domain/kyc/
+    responsibility: "Vérification d'identité via prestataire externe"
+
+  - name: WebhookHandler
+    path: src/domain/webhook/
+    responsibility: "Réception et validation des callbacks PSP"
+    security: [signature_verification, idempotency, replay_protection]
+
+  # AJOUTEZ VOS SERVICES ICI
+
+# ============================================================
+# COMPOSANTS FRONT PARTAGÉS
+# ============================================================
+
+frontend_components:
+
+  - name: DesignSystem
+    path: src/components/ui/
+    description: "Composants UI de base (Button, Input, Modal, Table, etc.)"
+
+  - name: FinancialDashboard
+    path: src/components/financial/
+    description: "Widgets de visualisation financière"
+
+  - name: TransactionHistory
+    path: src/components/transactions/
+    description: "Affichage historique des transactions"
+
+  # AJOUTEZ VOS COMPOSANTS ICI
+
+# ============================================================
+# PRESTATAIRES EXTERNES APPROUVÉS
+# ============================================================
+# Seuls ces prestataires sont autorisés. Tout autre = validation CTO.
+
+approved_providers:
+  payment: []          # ex: [mangopay, stripe, lemonway]
+  kyc_aml: []          # ex: [onfido, persona, sumsub]
+  document_storage: [] # ex: [aws_s3, gcp_storage]
+  secrets: []          # ex: [hashicorp_vault, aws_secrets_manager]
+  monitoring: []       # ex: [datadog, sentry, prometheus]
+  email: []            # ex: [sendgrid, ses]
+
+# ============================================================
+# NOMENCLATURE FINANCIÈRE — standards obligatoires
+# ============================================================
+# Les agents ne doivent JAMAIS inventer un code devise, instrument,
+# marché ou paiement si un standard officiel existe.
+
+financial_standards:
+  currencies:
+    standard: ISO_4217
+    authority: SIX
+    usage: "Tout champ devise dans la plateforme"
+
+  payment_messages:
+    standard: ISO_20022
+    usage: "Codes de paiement, service levels, motifs"
+
+  legal_entities:
+    standard: LEI
+    authority: GLEIF
+    usage: "Identification des personnes morales"
+
+  instruments:
+    standards:
+      - { name: ISIN, iso: "6166" }
+      - { name: CFI, iso: "10962" }
+      - { name: FISN, iso: "18774" }
+    authority: ANNA
+    usage: "Identification des instruments financiers"
+
+  markets:
+    standard: MIC
+    iso: "10383"
+    usage: "Codes des marchés et segments de marché"
+
+  bank_accounts:
+    standard: IBAN
+    iso: "13616"
+    authority: SWIFT
+    usage: "Formats de comptes bancaires"
+
+  sepa:
+    authority: EPC
+    schemes: [SCT, SCT_INST, SDD]
+    usage: "Virements et prélèvements SEPA"
+
+# ============================================================
+# LIBRAIRIES APPROUVÉES
+# ============================================================
+# Toute nouvelle dépendance non listée ici = justification + review CTO.
+
+approved_libraries:
+  # REMPLIR avec vos librairies approuvées, ex:
+  # - name: zod
+  #   usage: "Validation de schémas"
+  #   forbidden_usage: "Ne pas utiliser pour la validation financière"
+  # - name: dayjs
+  #   usage: "Manipulation de dates"
+  #   forbidden_usage: "Ne pas utiliser moment.js"
