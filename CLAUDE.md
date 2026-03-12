@@ -84,9 +84,38 @@ docs/
   platform-api.openapi.json   # Full API spec — READ THIS FIRST
 ```
 
+## API Client — MANDATORY
+
+All calls to the Platform API **MUST** go through the centralized client at `app/lib/api.server.ts`.
+
+```ts
+import { api } from "~/lib/api.server";
+
+// In a loader or action:
+const res = await api("/persons");
+const data = await res.json();
+```
+
+### Rules
+
+- **NEVER use `fetch()` directly** to call the Platform API — always use `import { api } from "~/lib/api.server"`
+- **NEVER install axios, ky, or any other HTTP client** — the built-in `api()` wrapper around native `fetch` is all we need
+- **Server-side only** — the `.server.ts` suffix ensures the module (and the API key) is never bundled into client code. Only import it from loaders, actions, and other `.server` files
+- **NEVER expose `API_KEY`** to the browser — if a component needs API data, fetch it in a loader/action and pass it as props
+- **NEVER hardcode the API key** — it is read from `process.env.API_KEY` (set in Vercel env vars)
+
+### Environment Variables
+
+| Variable       | Description                          | Example                                |
+|----------------|--------------------------------------|----------------------------------------|
+| `API_BASE_URL` | Platform API root URL (no trailing /) | `https://cif-test.anaxago.com/api`    |
+| `API_KEY`      | WAF passthrough key (secret)         | Set in Vercel Settings → Env Variables |
+
+See `.env.example` for local development setup.
+
 ## Development Rules
 
 - **API spec is the source of truth** — always check `docs/platform-api.openapi.json` for exact field names, types, and required/optional status before writing any API call
-- **No hardcoded API URLs** — use environment variables (`VITE_API_BASE_URL` or similar)
+- **No hardcoded API URLs** — use environment variables via the `api()` client
 - **TypeScript strict mode** — no `any`, explicit return types
 - **Respond in French** — the UI is in French, user-facing strings should be in French
