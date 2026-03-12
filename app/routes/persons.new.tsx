@@ -10,20 +10,20 @@ const API_KEY = process.env.API_KEY ?? "";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "Créer une personne — Anaxago" },
+    { title: "Créer une personne Kernel — Anaxago" },
     { name: "description", content: "Créer une personne Kernel" },
   ];
 }
 
-interface PersonResponse {
+interface PersonKernelResponse {
   id: string;
   firstName: string;
   lastName: string;
-  personKernelId: string | null;
+  legacyAppId: string | null;
 }
 
 type ActionData =
-  | { success: true; person: PersonResponse }
+  | { success: true; person: PersonKernelResponse }
   | { success: false; error: string };
 
 export async function action({ request }: Route.ActionArgs): Promise<ActionData> {
@@ -31,9 +31,9 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionData>
     const formData = await request.formData();
     const firstName = formData.get("firstName") as string;
     const lastName = formData.get("lastName") as string;
-    const personKernelId = formData.get("personKernelId") as string;
+    const legacyAppId = formData.get("legacyAppId") as string;
 
-    const response = await fetch(`${API_BASE_URL}/persons`, {
+    const response = await fetch(`${API_BASE_URL}/person-kernels`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -42,9 +42,7 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionData>
       body: JSON.stringify({
         firstName,
         lastName,
-        birthDate: "1990-01-01",
-        nationality: "FR",
-        ...(personKernelId ? { personKernelId } : {}),
+        ...(legacyAppId ? { legacyAppId } : {}),
       }),
     });
 
@@ -58,7 +56,7 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionData>
       };
     }
 
-    const person = (await response.json()) as PersonResponse;
+    const person = (await response.json()) as PersonKernelResponse;
     return { success: true, person };
   } catch (err) {
     return {
@@ -84,7 +82,7 @@ export default function NewPerson() {
           <div className="space-y-4">
             <div className="rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4">
               <p className="text-green-800 dark:text-green-300 font-medium">
-                Personne créée avec succès
+                Personne Kernel créée avec succès
               </p>
               <dl className="mt-3 space-y-1 text-sm text-green-700 dark:text-green-400">
                 <div className="flex gap-2">
@@ -97,11 +95,11 @@ export default function NewPerson() {
                     {actionData.person.firstName} {actionData.person.lastName}
                   </dd>
                 </div>
-                {actionData.person.personKernelId && (
+                {actionData.person.legacyAppId && (
                   <div className="flex gap-2">
                     <dt className="font-medium">ID Anaxago :</dt>
                     <dd className="font-mono">
-                      {actionData.person.personKernelId}
+                      {actionData.person.legacyAppId}
                     </dd>
                   </div>
                 )}
@@ -152,20 +150,20 @@ export default function NewPerson() {
 
             <div>
               <label
-                htmlFor="personKernelId"
+                htmlFor="legacyAppId"
                 className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
               >
                 ID Anaxago
               </label>
               <input
-                id="personKernelId"
-                name="personKernelId"
+                id="legacyAppId"
+                name="legacyAppId"
                 type="text"
-                placeholder="550e8400-e29b-41d4-a716-446655440000"
-                className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-xs"
+                placeholder="42"
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                UUID de la personne dans le kernel (optionnel)
+                ID de l'application legacy (optionnel)
               </p>
             </div>
 
