@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { Form, useActionData, useNavigation } from "react-router";
 import type { Route } from "./+types/persons.new";
-import { createPerson, type PersonResponse } from "~/lib/api";
+
+const API_BASE_URL =
+  process.env.VITE_API_BASE_URL ?? "http://localhost:3000/api";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -9,34 +11,53 @@ export function meta({}: Route.MetaArgs) {
   ];
 }
 
-export default function NewPerson() {
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [personKernelId, setPersonKernelId] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [created, setCreated] = useState<PersonResponse | null>(null);
+interface PersonResponse {
+  id: string;
+  firstName: string;
+  lastName: string;
+  personKernelId: string | null;
+}
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
+type ActionData =
+  | { success: true; person: PersonResponse }
+  | { success: false; error: string };
 
-    try {
-      const person = await createPerson({
-        firstName,
-        lastName,
-        birthDate: "1990-01-01",
-        nationality: "FR",
-        ...(personKernelId ? { personKernelId } : {}),
-      });
-      setCreated(person);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Une erreur est survenue");
-    } finally {
-      setLoading(false);
-    }
+export async function action({ request }: Route.ActionArgs): Promise<ActionData> {
+  const formData = await request.formData();
+  const firstName = formData.get("firstName") as string;
+  const lastName = formData.get("lastName") as string;
+  const personKernelId = formData.get("personKernelId") as string;
+
+  const response = await fetch(`${API_BASE_URL}/persons`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      firstName,
+      lastName,
+      birthDate: "1990-01-01",
+      nationality: "FR",
+      ...(personKernelId ? { personKernelId } : {}),
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    return {
+      success: false,
+      error:
+        (error as Record<string, string>).message ??
+        `Erreur ${response.status} lors de la création`,
+    };
   }
+
+  const person = (await response.json()) as PersonResponse;
+  return { success: true, person };
+}
+
+export default function NewPerson() {
+  const actionData = useActionData<ActionData>();
+  const navigation = useNavigation();
+  const isSubmitting = navigation.state === "submitting";
 
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-4">
@@ -45,7 +66,7 @@ export default function NewPerson() {
           Créer une personne Kernel
         </h1>
 
-        {created ? (
+        {actionData?.success ? (
           <div className="space-y-4">
             <div className="rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4">
               <p className="text-green-800 dark:text-green-300 font-medium">
@@ -54,37 +75,33 @@ export default function NewPerson() {
               <dl className="mt-3 space-y-1 text-sm text-green-700 dark:text-green-400">
                 <div className="flex gap-2">
                   <dt className="font-medium">ID :</dt>
-                  <dd className="font-mono">{created.id}</dd>
+                  <dd className="font-mono">{actionData.person.id}</dd>
                 </div>
                 <div className="flex gap-2">
                   <dt className="font-medium">Nom :</dt>
                   <dd>
-                    {created.firstName} {created.lastName}
+                    {actionData.person.firstName} {actionData.person.lastName}
                   </dd>
                 </div>
-                {created.personKernelId && (
+                {actionData.person.personKernelId && (
                   <div className="flex gap-2">
                     <dt className="font-medium">ID Anaxago :</dt>
-                    <dd className="font-mono">{created.personKernelId}</dd>
+                    <dd className="font-mono">
+                      {actionData.person.personKernelId}
+                    </dd>
                   </div>
                 )}
               </dl>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setCreated(null);
-                setFirstName("");
-                setLastName("");
-                setPersonKernelId("");
-              }}
-              className="w-full rounded-lg bg-gray-900 dark:bg-white px-4 py-2.5 text-sm font-medium text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
+            <a
+              href="/persons/new"
+              className="block w-full rounded-lg bg-gray-900 dark:bg-white px-4 py-2.5 text-sm font-medium text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors text-center"
             >
               Créer une autre personne
-            </button>
+            </a>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <Form method="post" className="space-y-5">
             <div>
               <label
                 htmlFor="firstName"
@@ -94,10 +111,9 @@ export default function NewPerson() {
               </label>
               <input
                 id="firstName"
+                name="firstName"
                 type="text"
                 required
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
                 placeholder="Jean"
                 className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
@@ -112,10 +128,9 @@ export default function NewPerson() {
               </label>
               <input
                 id="lastName"
+                name="lastName"
                 type="text"
                 required
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
                 placeholder="Dupont"
                 className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
@@ -130,9 +145,8 @@ export default function NewPerson() {
               </label>
               <input
                 id="personKernelId"
+                name="personKernelId"
                 type="text"
-                value={personKernelId}
-                onChange={(e) => setPersonKernelId(e.target.value)}
                 placeholder="550e8400-e29b-41d4-a716-446655440000"
                 className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-xs"
               />
@@ -141,22 +155,22 @@ export default function NewPerson() {
               </p>
             </div>
 
-            {error && (
+            {actionData?.success === false && (
               <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3">
                 <p className="text-sm text-red-700 dark:text-red-400">
-                  {error}
+                  {actionData.error}
                 </p>
               </div>
             )}
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={isSubmitting}
               className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {loading ? "Création en cours..." : "Créer la personne"}
+              {isSubmitting ? "Création en cours..." : "Créer la personne"}
             </button>
-          </form>
+          </Form>
         )}
       </div>
     </main>
