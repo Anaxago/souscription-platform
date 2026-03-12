@@ -2,7 +2,9 @@ import { Form, useActionData, useNavigation } from "react-router";
 import type { Route } from "./+types/persons.new";
 
 const API_BASE_URL =
-  process.env.VITE_API_BASE_URL ?? "http://localhost:3000/api";
+  process.env.API_BASE_URL ??
+  process.env.VITE_API_BASE_URL ??
+  "https://cif-test.anaxago.com/api";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -23,35 +25,42 @@ type ActionData =
   | { success: false; error: string };
 
 export async function action({ request }: Route.ActionArgs): Promise<ActionData> {
-  const formData = await request.formData();
-  const firstName = formData.get("firstName") as string;
-  const lastName = formData.get("lastName") as string;
-  const personKernelId = formData.get("personKernelId") as string;
+  try {
+    const formData = await request.formData();
+    const firstName = formData.get("firstName") as string;
+    const lastName = formData.get("lastName") as string;
+    const personKernelId = formData.get("personKernelId") as string;
 
-  const response = await fetch(`${API_BASE_URL}/persons`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      firstName,
-      lastName,
-      birthDate: "1990-01-01",
-      nationality: "FR",
-      ...(personKernelId ? { personKernelId } : {}),
-    }),
-  });
+    const response = await fetch(`${API_BASE_URL}/persons`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        firstName,
+        lastName,
+        birthDate: "1990-01-01",
+        nationality: "FR",
+        ...(personKernelId ? { personKernelId } : {}),
+      }),
+    });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      return {
+        success: false,
+        error:
+          (error as Record<string, string>).message ??
+          `Erreur ${response.status} lors de la création`,
+      };
+    }
+
+    const person = (await response.json()) as PersonResponse;
+    return { success: true, person };
+  } catch (err) {
     return {
       success: false,
-      error:
-        (error as Record<string, string>).message ??
-        `Erreur ${response.status} lors de la création`,
+      error: err instanceof Error ? err.message : "Erreur de connexion au serveur",
     };
   }
-
-  const person = (await response.json()) as PersonResponse;
-  return { success: true, person };
 }
 
 export default function NewPerson() {
