@@ -1,39 +1,46 @@
 import { Form, useActionData, useNavigation } from "react-router";
-import type { Route } from "./+types/persons.new";
+import type { Route } from "./+types/products.new";
 import { api } from "~/lib/api.server";
+
+const PRODUCT_TYPES = [
+  "SCPI",
+  "OPCI",
+  "SCI",
+  "PE",
+  "STRUCTURED",
+  "CROWDFUNDING",
+  "OBLIGATIONS",
+  "ACTIONS",
+  "ETF",
+  "MONETAIRE",
+] as const;
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "Créer une personne Kernel — Anaxago" },
-    { name: "description", content: "Créer une personne Kernel" },
+    { title: "Nouveau produit Kernel — Anaxago" },
+    { name: "description", content: "Créer un produit Kernel" },
   ];
 }
 
-interface PersonKernelResponse {
+interface ProductKernelResponse {
   id: string;
-  firstName: string;
-  lastName: string;
-  legacyAppId: string | null;
+  name: string;
+  type: string;
 }
 
 type ActionData =
-  | { success: true; person: PersonKernelResponse }
+  | { success: true; product: ProductKernelResponse }
   | { success: false; error: string };
 
 export async function action({ request }: Route.ActionArgs): Promise<ActionData> {
   try {
     const formData = await request.formData();
-    const firstName = formData.get("firstName") as string;
-    const lastName = formData.get("lastName") as string;
-    const legacyAppId = formData.get("legacyAppId") as string;
+    const name = formData.get("name") as string;
+    const type = formData.get("type") as string;
 
-    const response = await api("/person-kernels", {
+    const response = await api("/product-kernels", {
       method: "POST",
-      body: JSON.stringify({
-        firstName,
-        lastName,
-        ...(legacyAppId ? { legacyAppId } : {}),
-      }),
+      body: JSON.stringify({ name, type }),
     });
 
     if (!response.ok) {
@@ -46,8 +53,8 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionData>
       };
     }
 
-    const person = (await response.json()) as PersonKernelResponse;
-    return { success: true, person };
+    const product = (await response.json()) as ProductKernelResponse;
+    return { success: true, product };
   } catch (err) {
     return {
       success: false,
@@ -56,7 +63,7 @@ export async function action({ request }: Route.ActionArgs): Promise<ActionData>
   }
 }
 
-export default function NewPerson() {
+export default function NewProduct() {
   const actionData = useActionData<ActionData>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
@@ -65,96 +72,79 @@ export default function NewPerson() {
     <main className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-lg p-8">
         <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">
-          Créer une personne Kernel
+          Nouveau produit Kernel
         </h1>
 
         {actionData?.success ? (
           <div className="space-y-4">
             <div className="rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4">
               <p className="text-green-800 dark:text-green-300 font-medium">
-                Personne Kernel créée avec succès
+                Produit créé avec succès
               </p>
               <dl className="mt-3 space-y-1 text-sm text-green-700 dark:text-green-400">
                 <div className="flex gap-2">
                   <dt className="font-medium">ID :</dt>
-                  <dd className="font-mono">{actionData.person.id}</dd>
+                  <dd className="font-mono">{actionData.product.id}</dd>
                 </div>
                 <div className="flex gap-2">
                   <dt className="font-medium">Nom :</dt>
-                  <dd>
-                    {actionData.person.firstName} {actionData.person.lastName}
-                  </dd>
+                  <dd>{actionData.product.name}</dd>
                 </div>
-                {actionData.person.legacyAppId && (
-                  <div className="flex gap-2">
-                    <dt className="font-medium">ID Anaxago :</dt>
-                    <dd className="font-mono">
-                      {actionData.person.legacyAppId}
-                    </dd>
-                  </div>
-                )}
+                <div className="flex gap-2">
+                  <dt className="font-medium">Type :</dt>
+                  <dd>{actionData.product.type}</dd>
+                </div>
               </dl>
             </div>
             <a
-              href="/persons/new"
+              href="/products/new"
               className="block w-full rounded-lg bg-gray-900 dark:bg-white px-4 py-2.5 text-sm font-medium text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors text-center"
             >
-              Créer une autre personne
+              Créer un autre produit
             </a>
           </div>
         ) : (
           <Form method="post" className="space-y-5">
             <div>
               <label
-                htmlFor="firstName"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
-              >
-                Prénom
-              </label>
-              <input
-                id="firstName"
-                name="firstName"
-                type="text"
-                required
-                placeholder="Jean"
-                className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="lastName"
+                htmlFor="name"
                 className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
               >
                 Nom
               </label>
               <input
-                id="lastName"
-                name="lastName"
+                id="name"
+                name="name"
                 type="text"
                 required
-                placeholder="Dupont"
+                placeholder="SCPI Corum Origin"
                 className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
 
             <div>
               <label
-                htmlFor="legacyAppId"
+                htmlFor="type"
                 className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
               >
-                ID Anaxago
+                Type
               </label>
-              <input
-                id="legacyAppId"
-                name="legacyAppId"
-                type="text"
-                placeholder="42"
-                className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                ID de l'application legacy (optionnel)
-              </p>
+              <select
+                id="type"
+                name="type"
+                required
+                defaultValue=""
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="" disabled>
+                  Sélectionner un type
+                </option>
+                {PRODUCT_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {actionData?.success === false && (
@@ -170,7 +160,7 @@ export default function NewPerson() {
               disabled={isSubmitting}
               className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {isSubmitting ? "Création en cours..." : "Créer la personne"}
+              {isSubmitting ? "Création en cours..." : "Créer le produit"}
             </button>
           </Form>
         )}
