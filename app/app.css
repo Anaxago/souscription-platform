@@ -180,12 +180,12 @@ html, body {
 .hero-dark {
   background: var(--clr-obsidian);
   color: var(--clr-ecru-type);
-  padding: var(--space-3xl) var(--grid-margin) var(--space-xl);
-  padding-top: calc(var(--space-3xl) + 68px);
 }
 .hero-dark__inner {
   max-width: var(--max-width);
   margin: 0 auto;
+  padding: calc(var(--space-3xl) + 68px) var(--space-xl) var(--space-xl);
+  box-sizing: border-box;
 }
 .hero-dark .text-h1 {
   color: var(--clr-off-white);
@@ -199,16 +199,6 @@ html, body {
   max-width: 600px;
   margin-top: var(--space-md);
   line-height: 1.5;
-}
-
-/* Hero CTA — ensure no outline/dashed artifacts */
-.hero-dark .btn-primary {
-  outline: none;
-  border-style: solid;
-}
-.hero-dark .btn-primary:focus-visible {
-  outline: 2px solid var(--clr-mauve);
-  outline-offset: 2px;
 }
 
 /* Hero reassurance band — value/label split */
@@ -262,16 +252,22 @@ html, body {
    ────────────────────────────────────────────── */
 .split-layout {
   display: grid;
-  grid-template-columns: 1fr 400px;
-  gap: var(--space-xl);
+  grid-template-columns: 1fr 380px;
+  gap: var(--space-lg);
   max-width: var(--max-width);
   margin: 0 auto;
-  padding: var(--space-xl) var(--grid-margin);
+  padding: var(--space-xl);
   align-items: start;
+  box-sizing: border-box;
+}
+
+/* Prevent grid children from overflowing */
+.split-layout > * {
+  min-width: 0;
 }
 
 .split-layout__main {
-  min-width: 0;
+  padding-left: 0;
 }
 
 .split-layout__aside {
@@ -320,8 +316,6 @@ html, body {
   justify-content: center;
   padding: 16px 28px;
   font-size: 15px;
-  outline: none;
-  border-style: solid;
 }
 
 .sticky-panel__reassurance {
@@ -518,6 +512,19 @@ html, body {
 }
 
 /* ──────────────────────────────────────────────
+   DS4 — Global focus reset
+   ────────────────────────────────────────────── */
+.ds4-body button,
+.ds4-body a {
+  outline: none;
+}
+.ds4-body button:focus-visible,
+.ds4-body a:focus-visible {
+  outline: 2px solid var(--clr-primary);
+  outline-offset: 3px;
+}
+
+/* ──────────────────────────────────────────────
    DS4 — Buttons
    ────────────────────────────────────────────── */
 .btn-primary {
@@ -527,15 +534,15 @@ html, body {
   border: 1px solid var(--clr-primary); border-radius: var(--radius-pill);
   padding: 14px 28px; transition: var(--transition-fast);
   text-decoration: none; cursor: pointer;
-  outline: none;
+  outline: none; border-style: solid;
 }
 .btn-primary:hover {
   background: var(--clr-primary-dark);
   border-color: var(--clr-primary-dark);
 }
 .btn-primary:focus-visible {
-  outline: 2px solid var(--clr-mauve);
-  outline-offset: 2px;
+  outline: 2px solid var(--clr-primary);
+  outline-offset: 3px;
 }
 
 .btn-primary--hero {
