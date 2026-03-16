@@ -900,10 +900,15 @@ html, body {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
-  background: var(--clr-ecru-bg);
-  border: 1px solid var(--clr-stroke-dark);
+  padding: var(--space-md);
+  background: var(--clr-off-white);
+  border: 1px dashed var(--clr-stroke-dark);
   border-radius: var(--radius-md);
+  transition: var(--transition-fast);
+}
+.upload-card:hover {
+  border-color: var(--clr-cashmere);
+  background: var(--clr-ecru-bg);
 }
 .upload-card__info {
   flex: 1;
@@ -926,8 +931,8 @@ html, body {
   text-overflow: ellipsis;
 }
 .upload-card__btn {
-  width: 36px;
-  height: 36px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   background: none;
   border: 1px solid var(--clr-stroke-dark);
@@ -1107,8 +1112,29 @@ html, body {
 
 /* Content area */
 .journey-content {
-  padding: var(--space-xl);
-  max-width: 680px;
+  padding: var(--space-xl) var(--space-xl) var(--space-xl) var(--space-2xl);
+  max-width: 720px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: calc(100vh - 68px);
+}
+.journey-content > .step-panel {
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+.journey-content > .step-panel .step-panel__header {
+  margin-bottom: var(--space-xl);
+}
+.journey-content > .step-panel .step-panel__title {
+  font-size: 24px;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+}
+.journey-content > .step-panel .step-panel__desc {
+  font-size: 16px;
+  margin-top: 4px;
 }
 
 /* Mobile: stack vertically */
@@ -1122,6 +1148,11 @@ html, body {
     border-right: none;
     border-bottom: 1px solid var(--clr-stroke-dark);
     padding: var(--space-md);
+  }
+  .journey-content {
+    padding: var(--space-lg) var(--space-md);
+    min-height: auto;
+    justify-content: flex-start;
   }
   .journey-stepper__line {
     height: 16px;
