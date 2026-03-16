@@ -2,6 +2,7 @@ import { useState } from "react";
 import { data, useRevalidator } from "react-router";
 import type { Route } from "./+types/souscrire.$slug.parcours.$journeyId";
 import { api } from "~/lib/api.server";
+import UserVerificationStep from "~/components/steps/user-verification-step";
 
 /* ──────────────────────────────────────────────
    Types
@@ -111,7 +112,16 @@ export async function loader({ params }: Route.LoaderArgs) {
   }
 
   const journey = (await journeyRes.json()) as SubscriptionJourney;
-  return { journey, slug };
+
+  // Fetch investor to get personKernelId (needed for KYC)
+  let personKernelId: string | null = null;
+  const investorRes = await api(`/individual-investors/${journey.investorId}`);
+  if (investorRes.ok) {
+    const investor = (await investorRes.json()) as { personKernelId: string };
+    personKernelId = investor.personKernelId;
+  }
+
+  return { journey, slug, personKernelId };
 }
 
 export function meta({ data }: Route.MetaArgs) {
@@ -126,10 +136,12 @@ export function meta({ data }: Route.MetaArgs) {
    ────────────────────────────────────────────── */
 
 export default function ParcoursSouscription({ loaderData }: Route.ComponentProps) {
-  const { journey, slug } = loaderData;
+  const { journey, slug, personKernelId } = loaderData;
   const revalidator = useRevalidator();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [activeStepId, setActiveStepId] = useState<string | null>(null);
+  const actionUrl = `/souscrire/${slug}/parcours/${journey.id}/action`;
 
   const applicableSteps = journey.steps
     .filter((s) => s.isApplicable)
@@ -394,15 +406,48 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
                         cursor: isLoading ? "not-allowed" : "pointer",
                       }}
                       disabled={isLoading}
-                      onClick={() => handleStepAction(step)}
+                      onClick={() => {
+                        // Steps with dedicated UI open the step panel
+                        if (step.stepType === "USER_VERIFICATION") {
+                          setActiveStepId(step.id);
+                        } else {
+                          handleStepAction(step);
+                        }
+                      }}
                     >
-                      {isLoading ? "..." : "Valider"}
+                      {isLoading ? "..." : step.stepType === "USER_VERIFICATION" ? "Commencer" : "Valider"}
                     </button>
                   )}
                 </div>
               );
             })}
           </div>
+
+          {/* ── Active step detail panel ── */}
+          {activeStepId && (() => {
+            const step = applicableSteps.find((s) => s.id === activeStepId);
+            if (!step) return null;
+
+            if (step.stepType === "USER_VERIFICATION" && personKernelId) {
+              return (
+                <div style={{ marginTop: "var(--space-lg)" }}>
+                  <UserVerificationStep
+                    journeyId={journey.id}
+                    stepId={step.id}
+                    investorId={journey.investorId}
+                    personKernelId={personKernelId}
+                    actionUrl={actionUrl}
+                    onComplete={() => {
+                      setActiveStepId(null);
+                      revalidator.revalidate();
+                    }}
+                  />
+                </div>
+              );
+            }
+
+            return null;
+          })()}
 
           {/* Journey completed */}
           {journey.status === "COMPLETED" && (
