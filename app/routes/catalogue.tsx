@@ -87,26 +87,27 @@ function toDirectImageUrl(url: string): string {
 }
 
 export async function loader() {
-  const response = await api("/marketing-products?pageSize=50");
-  if (!response.ok) {
-    return { products: [] as MarketingProductDetail[] };
-  }
-  const result = (await response.json()) as { data: MarketingProductListItem[] };
-  const listItems = (result.data ?? []).filter((p) => p.status !== "DRAFT");
+  try {
+    const response = await api("/marketing-products?pageSize=50");
+    if (!response.ok) {
+      return { products: [] as MarketingProductDetail[] };
+    }
+    const result = (await response.json()) as { data: MarketingProductListItem[] };
+    const listItems = (result.data ?? []).filter((p) => p.status !== "DRAFT");
 
-  // Fetch full details for each product (for images, descriptions, etc.)
-  const products = await Promise.all(
-    listItems.map(async (item): Promise<MarketingProductDetail> => {
+    // Fetch full details for each product (for images, descriptions, etc.)
+    const products: MarketingProductDetail[] = [];
+    for (const item of listItems) {
       try {
         const detailRes = await api(`/marketing-products/${item.id}`);
         if (detailRes.ok) {
-          return (await detailRes.json()) as MarketingProductDetail;
+          products.push((await detailRes.json()) as MarketingProductDetail);
+          continue;
         }
       } catch {
         // fallback below
       }
-      // Fallback with list data only
-      return {
+      products.push({
         id: item.id,
         name: item.name,
         slug: item.slug,
@@ -119,11 +120,13 @@ export async function loader() {
         status: item.status,
         minimumInvestmentInCents: null,
         minimumInvestmentCurrency: "EUR",
-      };
-    }),
-  );
+      });
+    }
 
-  return { products };
+    return { products };
+  } catch {
+    return { products: [] as MarketingProductDetail[] };
+  }
 }
 
 export function meta() {
@@ -195,7 +198,7 @@ export default function Catalogue({ loaderData }: Route.ComponentProps) {
                   {/* Type tag */}
                   <div className="catalogue-card__tags">
                     {typeLabel && <span className="tag">{typeLabel}</span>}
-                    {product.investmentSectors.slice(0, 2).map((s) => (
+                    {(product.investmentSectors ?? []).slice(0, 2).map((s) => (
                       <span key={s} className="tag">{SECTOR_LABELS[s] ?? s}</span>
                     ))}
                   </div>
