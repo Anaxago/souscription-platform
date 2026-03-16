@@ -1,7 +1,21 @@
 import type { Route } from "./+types/catalogue";
 import { api } from "~/lib/api.server";
 
-interface MarketingProduct {
+// List endpoint returns a lightweight DTO
+interface MarketingProductListItem {
+  id: string;
+  name: string;
+  slug: string;
+  productType: string | null;
+  holdingCategory: string | null;
+  marketingCategory: "PRODUCT" | "HOLDING_TYPE";
+  status: "DRAFT" | "COMING_SOON" | "OPEN" | "FULLY_SUBSCRIBED" | "CLOSED";
+  accessLevel: string;
+  campaignsCount: number;
+}
+
+// Full detail DTO (fetched per product for richer cards)
+interface MarketingProductDetail {
   id: string;
   name: string;
   slug: string;
@@ -11,11 +25,9 @@ interface MarketingProduct {
   shortDescription: string | null;
   imageUrl: string | null;
   investmentSectors: string[];
-  status: "DRAFT" | "COMING_SOON" | "OPEN" | "FULLY_SUBSCRIBED" | "CLOSED";
-  accessLevel: string;
+  status: string;
   minimumInvestmentInCents: number | null;
   minimumInvestmentCurrency: string;
-  riskLevel: number | null;
 }
 
 const PRODUCT_TYPE_LABELS: Record<string, string> = {
@@ -77,11 +89,40 @@ function toDirectImageUrl(url: string): string {
 export async function loader() {
   const response = await api("/marketing-products?pageSize=50");
   if (!response.ok) {
-    return { products: [] };
+    return { products: [] as MarketingProductDetail[] };
   }
-  const result = (await response.json()) as { data: MarketingProduct[] };
-  // Show only non-draft products
-  const products = (result.data ?? []).filter((p) => p.status !== "DRAFT");
+  const result = (await response.json()) as { data: MarketingProductListItem[] };
+  const listItems = (result.data ?? []).filter((p) => p.status !== "DRAFT");
+
+  // Fetch full details for each product (for images, descriptions, etc.)
+  const products = await Promise.all(
+    listItems.map(async (item): Promise<MarketingProductDetail> => {
+      try {
+        const detailRes = await api(`/marketing-products/${item.id}`);
+        if (detailRes.ok) {
+          return (await detailRes.json()) as MarketingProductDetail;
+        }
+      } catch {
+        // fallback below
+      }
+      // Fallback with list data only
+      return {
+        id: item.id,
+        name: item.name,
+        slug: item.slug,
+        productType: item.productType,
+        holdingCategory: item.holdingCategory,
+        marketingCategory: item.marketingCategory,
+        shortDescription: null,
+        imageUrl: null,
+        investmentSectors: [],
+        status: item.status,
+        minimumInvestmentInCents: null,
+        minimumInvestmentCurrency: "EUR",
+      };
+    }),
+  );
+
   return { products };
 }
 
@@ -123,7 +164,7 @@ export default function Catalogue({ loaderData }: Route.ComponentProps) {
               Aucun produit disponible pour le moment.
             </p>
           )}
-          {products.map((product) => {
+          {products.map((product: MarketingProductDetail) => {
             const status = STATUS_CONFIG[product.status] ?? STATUS_CONFIG.DRAFT;
             const typeLabel = product.productType
               ? PRODUCT_TYPE_LABELS[product.productType] ?? product.productType
