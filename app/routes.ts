@@ -5,6 +5,8 @@ export default [
   route("persons/new", "routes/persons.new.tsx"),
   route("products/new", "routes/products.new.tsx"),
   route("souscrire/:slug", "routes/souscrire.$slug.tsx"),
+  route("souscrire/:slug/demarrer", "routes/souscrire.$slug.demarrer.tsx"),
+  route("souscrire/:slug/parcours/:journeyId", "routes/souscrire.$slug.parcours.$journeyId.tsx"),
   route(
     "souscrire/documents/:productId/:documentId",
     "routes/souscrire.documents.$productId.$documentId.tsx",

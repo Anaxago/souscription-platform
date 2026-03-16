@@ -810,6 +810,47 @@ html, body {
 }
 
 /* ──────────────────────────────────────────────
+   DS4 — Form elements
+   ────────────────────────────────────────────── */
+.form-label {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--clr-cashmere);
+  margin-bottom: var(--space-xs);
+}
+.form-input {
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--clr-obsidian);
+  background: var(--clr-off-white);
+  border: 1px solid var(--clr-stroke-dark);
+  border-radius: var(--radius-md);
+  padding: 12px var(--space-sm);
+  transition: border-color 0.2s ease;
+  box-sizing: border-box;
+}
+.form-input:focus {
+  outline: none;
+  border-color: var(--clr-primary);
+}
+.form-input::placeholder {
+  color: var(--clr-stroke-light);
+}
+.form-error {
+  font-size: 14px;
+  color: #c0392b;
+  background: #fdf2f2;
+  border: 1px solid #f5c6cb;
+  border-radius: var(--radius-md);
+  padding: var(--space-sm);
+}
+
+/* ──────────────────────────────────────────────
    DS4 — Scroll reveal animations
    ────────────────────────────────────────────── */
 [data-reveal] {
