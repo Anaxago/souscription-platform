@@ -79,11 +79,6 @@ html, body {
 .section-dark  { background: var(--clr-obsidian); color: var(--clr-ecru-type); }
 .section-dark h1, .section-dark h2, .section-dark h3 { color: var(--clr-off-white); }
 .section-dark .text-eyebrow { color: var(--clr-mauve); }
-.section-dark .tag {
-  background: transparent;
-  color: var(--clr-mauve);
-  border-color: var(--clr-stroke-light);
-}
 
 .section-inner {
   padding: var(--space-xl) var(--grid-margin) var(--space-lg);
@@ -172,6 +167,13 @@ html, body {
 }
 .fund-card__tags { display: flex; flex-wrap: wrap; gap: 5px; }
 
+/* Hero-specific tag override: translucent on dark bg */
+.hero-dark .tag {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--clr-mauve);
+  border-color: rgba(122, 181, 175, 0.3);
+}
+
 /* ──────────────────────────────────────────────
    DS4 — Hero dark
    ────────────────────────────────────────────── */
@@ -179,7 +181,7 @@ html, body {
   background: var(--clr-obsidian);
   color: var(--clr-ecru-type);
   padding: var(--space-3xl) var(--grid-margin) var(--space-xl);
-  padding-top: calc(var(--space-3xl) + 68px); /* account for fixed nav */
+  padding-top: calc(var(--space-3xl) + 68px);
 }
 .hero-dark__inner {
   max-width: var(--max-width);
@@ -187,10 +189,6 @@ html, body {
 }
 .hero-dark .text-h1 {
   color: var(--clr-off-white);
-}
-.hero-dark .badge--open {
-  background: var(--clr-primary-light);
-  color: var(--clr-primary);
 }
 
 .hero-tagline {
@@ -203,36 +201,60 @@ html, body {
   line-height: 1.5;
 }
 
-/* Hero reassurance band */
+/* Hero CTA — ensure no outline/dashed artifacts */
+.hero-dark .btn-primary {
+  outline: none;
+  border-style: solid;
+}
+.hero-dark .btn-primary:focus-visible {
+  outline: 2px solid var(--clr-mauve);
+  outline-offset: 2px;
+}
+
+/* Hero reassurance band — value/label split */
 .hero-reassurance {
   display: flex;
   align-items: center;
-  gap: var(--space-lg);
+  gap: var(--space-xl);
   margin-top: var(--space-xl);
   padding-top: var(--space-md);
   border-top: 1px solid var(--clr-stroke-light);
 }
 .hero-reassurance__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.hero-reassurance__value {
   font-family: var(--font-display);
-  font-size: 13px;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--clr-off-white);
+  line-height: 1.2;
+}
+.hero-reassurance__label {
+  font-family: var(--font-display);
+  font-size: 12px;
   font-weight: 600;
   color: var(--clr-mauve);
-  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 .hero-reassurance__dot {
   width: 4px; height: 4px;
   border-radius: 50%;
   background: var(--clr-stroke-light);
   flex-shrink: 0;
+  align-self: center;
 }
 
 @media (max-width: 768px) {
   .hero-reassurance {
     flex-wrap: wrap;
-    gap: var(--space-sm) var(--space-md);
+    gap: var(--space-md) var(--space-lg);
   }
   .hero-reassurance__dot { display: none; }
-  .hero-reassurance__item { font-size: 12px; }
+  .hero-reassurance__value { font-size: 18px; }
 }
 
 /* ──────────────────────────────────────────────
@@ -284,10 +306,13 @@ html, body {
 }
 .sticky-panel__amount {
   font-family: var(--font-display);
-  font-size: 36px; font-weight: 700;
+  font-size: 36px; font-weight: 300;
   color: var(--clr-obsidian);
   margin: var(--space-xs) 0 var(--space-md);
   line-height: 1;
+}
+.sticky-panel__amount .currency-symbol {
+  font-size: 24px;
 }
 
 .sticky-panel .btn-primary {
@@ -295,6 +320,8 @@ html, body {
   justify-content: center;
   padding: 16px 28px;
   font-size: 15px;
+  outline: none;
+  border-style: solid;
 }
 
 .sticky-panel__reassurance {
@@ -346,12 +373,11 @@ html, body {
 .timeline__dot {
   width: 24px; height: 24px;
   border-radius: 50%;
-  background: var(--clr-primary-light);
-  border: 2px solid var(--clr-primary);
+  background: var(--clr-primary);
+  color: var(--clr-off-white);
   display: flex; align-items: center; justify-content: center;
   font-family: var(--font-display);
   font-size: 11px; font-weight: 700;
-  color: var(--clr-primary);
   flex-shrink: 0;
   position: relative;
   z-index: 1;
@@ -364,11 +390,21 @@ html, body {
   width: 2px;
   background: var(--clr-stroke-dark);
 }
+.timeline__content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 2px;
+}
 .timeline__label {
   font-size: 14px;
   font-weight: 600;
   color: var(--clr-obsidian);
-  padding-top: 2px;
+}
+.timeline__desc {
+  font-size: 12px;
+  color: var(--clr-cashmere);
+  line-height: 1.4;
 }
 
 /* ──────────────────────────────────────────────
@@ -378,12 +414,14 @@ html, body {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   border-top: 1px solid var(--clr-stroke-dark);
+  margin-bottom: var(--space-xl);
+  border-bottom: 1px solid var(--clr-stroke-dark);
 }
 .kv-item {
   padding: var(--space-md) var(--space-lg);
   border-right: 1px solid var(--clr-stroke-dark);
-  border-bottom: 1px solid var(--clr-stroke-dark);
   display: flex; flex-direction: column; gap: 6px;
+  height: 100%;
 }
 .kv-item:nth-child(3n) { border-right: none; }
 .kv-item__key {
@@ -408,7 +446,7 @@ html, body {
 }
 
 /* ──────────────────────────────────────────────
-   DS4 — Info list (advantages / disadvantages)
+   DS4 — Info sections (advantages / disadvantages)
    ────────────────────────────────────────────── */
 .info-section {
   margin-top: var(--space-xl);
@@ -433,13 +471,25 @@ html, body {
   font-size: 14px;
   line-height: 1.6;
   color: var(--clr-cashmere);
-  padding-left: var(--space-md);
-  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
 }
-.info-list-item::before {
-  content: '\2014';
-  position: absolute; left: 0;
-  color: var(--clr-stroke-dark);
+.info-list-item__icon {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.info-list-item__text {
+  flex: 1;
+}
+.info-list-item strong {
+  color: var(--clr-obsidian);
+  font-weight: 600;
+}
+
+/* Attention section — mauve differentiation */
+.info-section--attention .info-section__header .text-eyebrow {
+  color: var(--clr-mauve);
 }
 
 /* ──────────────────────────────────────────────
@@ -452,10 +502,15 @@ html, body {
   border: 1px solid var(--clr-primary); border-radius: var(--radius-pill);
   padding: 14px 28px; transition: var(--transition-fast);
   text-decoration: none; cursor: pointer;
+  outline: none;
 }
 .btn-primary:hover {
   background: var(--clr-primary-dark);
   border-color: var(--clr-primary-dark);
+}
+.btn-primary:focus-visible {
+  outline: 2px solid var(--clr-mauve);
+  outline-offset: 2px;
 }
 
 .btn-primary--hero {
@@ -515,7 +570,6 @@ html, body {
     white-space: nowrap;
   }
 
-  /* Add bottom padding to body so content isn't hidden behind mobile bar */
   .ds4-body {
     padding-bottom: 80px;
   }

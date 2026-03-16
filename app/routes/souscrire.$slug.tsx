@@ -78,24 +78,81 @@ const STATUS_BADGE: Record<string, { label: string; className: string }> = {
    Helpers
    ────────────────────────────────────────────── */
 
+/**
+ * Format cents to currency string using thin non-breaking space (&#8239;).
+ */
 function formatCurrency(cents: number, currency: string): string {
-  return new Intl.NumberFormat("fr-FR", {
+  const formatted = new Intl.NumberFormat("fr-FR", {
     style: "currency",
     currency,
     minimumFractionDigits: 0,
   }).format(cents / 100);
+  // Replace standard/non-breaking spaces with thin non-breaking space
+  return formatted.replace(/[\s\u00A0]/g, "\u202F");
 }
 
 /**
- * The API sometimes returns advantages/disadvantages as a single concatenated
- * string with leading/trailing dashes. Split on ". " to get individual items.
+ * Format amount as number with thin spaces (no currency symbol).
  */
-function parseListItems(items: string[]): string[] {
+function formatAmount(cents: number): string {
+  const formatted = new Intl.NumberFormat("fr-FR", {
+    minimumFractionDigits: 0,
+  }).format(cents / 100);
+  return formatted.replace(/[\s\u00A0]/g, "\u202F");
+}
+
+/**
+ * Parse API advantages/disadvantages into { title, detail } pairs.
+ * Each item starts with a bold keyword before the em dash.
+ */
+interface ListItem {
+  title: string;
+  detail: string;
+}
+
+function parseListItems(items: string[]): ListItem[] {
   return items
     .flatMap((item) => item.split(/\.\s+/))
     .map((s) => s.replace(/^-+/, "").replace(/-+$/, "").trim())
     .filter((s) => s.length > 0)
-    .map((s) => (s.endsWith(".") ? s : `${s}.`));
+    .map((s) => {
+      const text = s.endsWith(".") ? s : `${s}.`;
+      // Try to extract a bold title: first few words before a natural break
+      const match = text.match(
+        /^(.+?)\s*(?:\(|,\s|:\s|\.(?:\s|$))/,
+      );
+      if (match && match[1].length <= 60) {
+        const title = match[1];
+        const rest = text.slice(title.length).replace(/^\s*[(:,]\s*/, "");
+        if (rest.length > 0) {
+          return { title, detail: rest };
+        }
+      }
+      return { title: "", detail: text };
+    });
+}
+
+/* ──────────────────────────────────────────────
+   SVG icons
+   ────────────────────────────────────────────── */
+
+function CheckIcon() {
+  return (
+    <svg className="info-list-item__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="9 12 11 14 15 10" />
+    </svg>
+  );
+}
+
+function AlertIcon() {
+  return (
+    <svg className="info-list-item__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--clr-mauve)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="8" x2="12" y2="12" />
+      <line x1="12" y1="16" x2="12.01" y2="16" />
+    </svg>
+  );
 }
 
 /* ──────────────────────────────────────────────
@@ -147,6 +204,13 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
     product.minimumInvestmentInCents != null
       ? formatCurrency(product.minimumInvestmentInCents, product.minimumInvestmentCurrency)
       : null;
+  const minAmountNumber =
+    product.minimumInvestmentInCents != null
+      ? formatAmount(product.minimumInvestmentInCents)
+      : null;
+
+  // Split product name on " - " for multi-line H1
+  const nameParts = product.name.split(/\s*-\s*/);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -178,7 +242,14 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
             ))}
           </div>
 
-          <h1 className="text-h1">{product.name}</h1>
+          <h1 className="text-h1">
+            {nameParts.map((part, i) => (
+              <span key={i}>
+                {i > 0 && <br />}
+                {part}
+              </span>
+            ))}
+          </h1>
 
           <p className="hero-tagline">
             Construisez librement votre allocation avec un contrat d'assurance-vie
@@ -191,14 +262,27 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
             </a>
           )}
 
+          {/* Reassurance band — value/label pairs */}
           <div className="hero-reassurance">
-            <span className="hero-reassurance__item">15 ans d'expertise</span>
+            <div className="hero-reassurance__item">
+              <span className="hero-reassurance__value">15 ans</span>
+              <span className="hero-reassurance__label">d'expertise</span>
+            </div>
             <span className="hero-reassurance__dot" />
-            <span className="hero-reassurance__item">2 500+ investisseurs</span>
+            <div className="hero-reassurance__item">
+              <span className="hero-reassurance__value">2 500+</span>
+              <span className="hero-reassurance__label">investisseurs</span>
+            </div>
             <span className="hero-reassurance__dot" />
-            <span className="hero-reassurance__item">CIF AMF</span>
+            <div className="hero-reassurance__item">
+              <span className="hero-reassurance__value">CIF</span>
+              <span className="hero-reassurance__label">enregistré AMF</span>
+            </div>
             <span className="hero-reassurance__dot" />
-            <span className="hero-reassurance__item">Generali Vie</span>
+            <div className="hero-reassurance__item">
+              <span className="hero-reassurance__value">Generali Vie</span>
+              <span className="hero-reassurance__label">assureur</span>
+            </div>
           </div>
         </div>
       </section>
@@ -260,7 +344,14 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
                 </div>
                 <ul className="info-list">
                   {advantages.map((item, i) => (
-                    <li key={i} className="info-list-item">{item}</li>
+                    <li key={i} className="info-list-item">
+                      <CheckIcon />
+                      <span className="info-list-item__text">
+                        {item.title && <strong>{item.title}</strong>}
+                        {item.title && " — "}
+                        {item.detail}
+                      </span>
+                    </li>
                   ))}
                 </ul>
               </div>
@@ -268,20 +359,25 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
 
             {/* Points d'attention */}
             {disadvantages.length > 0 && (
-              <div className="info-section" data-reveal data-reveal-delay="2">
+              <div className="info-section info-section--attention" data-reveal data-reveal-delay="2">
                 <div className="info-section__header">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--clr-mauve)" strokeWidth="2">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                    <line x1="12" y1="9" x2="12" y2="13" />
-                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
                   </svg>
-                  <span className="text-eyebrow" style={{ color: "var(--clr-mauve)" }}>
-                    Points d'attention
-                  </span>
+                  <span className="text-eyebrow">Points d'attention</span>
                 </div>
                 <ul className="info-list">
                   {disadvantages.map((item, i) => (
-                    <li key={i} className="info-list-item">{item}</li>
+                    <li key={i} className="info-list-item">
+                      <AlertIcon />
+                      <span className="info-list-item__text">
+                        {item.title && <strong>{item.title}</strong>}
+                        {item.title && " — "}
+                        {item.detail}
+                      </span>
+                    </li>
                   ))}
                 </ul>
               </div>
@@ -292,7 +388,10 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
           <aside className="split-layout__aside">
             <div className="sticky-panel">
               <span className="sticky-panel__amount-label">À partir de</span>
-              <div className="sticky-panel__amount">{minAmount ?? "—"}</div>
+              <div className="sticky-panel__amount">
+                {minAmountNumber ?? "—"}{" "}
+                <span className="currency-symbol">€</span>
+              </div>
 
               {canSubscribe ? (
                 <a href={ctaHref} className="btn-primary">
@@ -327,27 +426,36 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="2">
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                   </svg>
-                  CIF enregistré AMF &middot; Generali Vie
+                  CIF enregistré AMF · Generali Vie
                 </div>
               </div>
 
-              {/* Timeline */}
+              {/* Timeline with descriptions */}
               <div className="timeline">
                 <div className="timeline__title">Étapes de souscription</div>
                 <div className="timeline__steps">
                   <div className="timeline__step">
                     <div className="timeline__dot">1</div>
                     <div className="timeline__line" />
-                    <span className="timeline__label">Profil investisseur</span>
+                    <div className="timeline__content">
+                      <span className="timeline__label">Profil investisseur</span>
+                      <span className="timeline__desc">Questionnaire réglementaire (5 min)</span>
+                    </div>
                   </div>
                   <div className="timeline__step">
                     <div className="timeline__dot">2</div>
                     <div className="timeline__line" />
-                    <span className="timeline__label">Documents &amp; justificatifs</span>
+                    <div className="timeline__content">
+                      <span className="timeline__label">Documents &amp; justificatifs</span>
+                      <span className="timeline__desc">Pièce d'identité et justificatif de domicile</span>
+                    </div>
                   </div>
                   <div className="timeline__step">
                     <div className="timeline__dot">3</div>
-                    <span className="timeline__label">Signature &amp; paiement</span>
+                    <div className="timeline__content">
+                      <span className="timeline__label">Signature &amp; paiement</span>
+                      <span className="timeline__desc">Signature électronique et virement sécurisé</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -366,7 +474,7 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
             )}
           </div>
           <a href={ctaHref} className="btn-primary">
-            Souscrire &rarr;
+            Souscrire →
           </a>
         </div>
       )}
