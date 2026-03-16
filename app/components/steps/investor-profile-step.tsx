@@ -179,6 +179,24 @@ export default function InvestorProfileStep({
       });
 
       if (isLastCategory) {
+        // Submit empty sessions for required categories that have no questions
+        if (requiredCategories) {
+          const coveredCategories = categories.map((c) => c.category);
+          const missingCategories = requiredCategories.filter((c) => !coveredCategories.includes(c));
+          for (const cat of missingCategories) {
+            try {
+              await callAction({
+                type: "submit-assessment-category",
+                investorId,
+                personKernelId,
+                category: cat,
+                answers: [],
+              });
+            } catch {
+              // Ignore errors for empty categories
+            }
+          }
+        }
         // All categories done — re-fetch journey to check if step auto-completed
         onComplete();
       } else {
