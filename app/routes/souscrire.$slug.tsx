@@ -592,11 +592,13 @@ function TabBar({
         </div>
       )}
 
-      {activeTab === "investissement" && children}
+      <div style={{ display: activeTab === "investissement" ? "block" : "none" }}>
+        {children}
+      </div>
 
-      {activeTab === "documents" && (
+      <div style={{ display: activeTab === "documents" ? "block" : "none" }}>
         <DocumentsList productId={productId} documents={documents} />
-      )}
+      </div>
     </>
   );
 }
