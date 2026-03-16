@@ -446,50 +446,75 @@ html, body {
 }
 
 /* ──────────────────────────────────────────────
-   DS4 — Info sections (advantages / disadvantages)
+   DS4 — Points grid (advantages / disadvantages)
    ────────────────────────────────────────────── */
-.info-section {
-  margin-top: var(--space-xl);
-}
-.info-section__header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  margin-bottom: var(--space-md);
-}
-.info-section__header .text-eyebrow {
-  margin-bottom: 0;
+.points-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--clr-stroke-dark);
+  border: 1px solid var(--clr-stroke-dark);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin: var(--space-xl) 0;
 }
 
-.info-list {
+.points-card {
+  background: var(--clr-off-white);
+  padding: var(--space-lg);
+}
+
+.points-card__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: var(--space-lg);
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid var(--clr-stroke-dark);
+}
+.points-card__title {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.points-card__icon {
+  flex-shrink: 0;
+}
+
+/* Positive = green */
+.points-card--positive .points-card__title { color: var(--clr-primary); }
+.points-card--positive .points-card__icon { color: var(--clr-primary); }
+
+/* Warning = mauve */
+.points-card--warning .points-card__title { color: var(--clr-mauve); }
+.points-card--warning .points-card__icon { color: var(--clr-mauve); }
+
+.points-list {
   list-style: none;
-  display: flex; flex-direction: column;
-  gap: var(--space-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
   padding: 0; margin: 0;
 }
-.info-list-item {
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--clr-cashmere);
+.points-list__item {
   display: flex;
   align-items: flex-start;
   gap: 12px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--clr-cashmere);
 }
-.info-list-item__icon {
+.points-list__item svg {
   flex-shrink: 0;
   margin-top: 3px;
-}
-.info-list-item__text {
-  flex: 1;
-}
-.info-list-item strong {
-  color: var(--clr-obsidian);
-  font-weight: 600;
+  width: 16px;
+  height: 16px;
 }
 
-/* Attention section — mauve differentiation */
-.info-section--attention .info-section__header .text-eyebrow {
-  color: var(--clr-mauve);
+@media (max-width: 768px) {
+  .points-grid { grid-template-columns: 1fr; }
 }
 
 /* ──────────────────────────────────────────────

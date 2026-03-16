@@ -102,57 +102,16 @@ function formatAmount(cents: number): string {
 }
 
 /**
- * Parse API advantages/disadvantages into { title, detail } pairs.
- * Each item starts with a bold keyword before the em dash.
+ * Parse API advantages/disadvantages into clean sentences.
+ * The API sometimes returns a single concatenated string with leading/trailing
+ * dashes. Split on ". " and clean up each item as a complete phrase.
  */
-interface ListItem {
-  title: string;
-  detail: string;
-}
-
-function parseListItems(items: string[]): ListItem[] {
+function parseListItems(items: string[]): string[] {
   return items
     .flatMap((item) => item.split(/\.\s+/))
     .map((s) => s.replace(/^-+/, "").replace(/-+$/, "").trim())
     .filter((s) => s.length > 0)
-    .map((s) => {
-      const text = s.endsWith(".") ? s : `${s}.`;
-      // Try to extract a bold title: first few words before a natural break
-      const match = text.match(
-        /^(.+?)\s*(?:\(|,\s|:\s|\.(?:\s|$))/,
-      );
-      if (match && match[1].length <= 60) {
-        const title = match[1];
-        const rest = text.slice(title.length).replace(/^\s*[(:,]\s*/, "");
-        if (rest.length > 0) {
-          return { title, detail: rest };
-        }
-      }
-      return { title: "", detail: text };
-    });
-}
-
-/* ──────────────────────────────────────────────
-   SVG icons
-   ────────────────────────────────────────────── */
-
-function CheckIcon() {
-  return (
-    <svg className="info-list-item__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" />
-      <polyline points="9 12 11 14 15 10" />
-    </svg>
-  );
-}
-
-function AlertIcon() {
-  return (
-    <svg className="info-list-item__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--clr-mauve)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" />
-      <line x1="12" y1="8" x2="12" y2="12" />
-      <line x1="12" y1="16" x2="12.01" y2="16" />
-    </svg>
-  );
+    .map((s) => (s.endsWith(".") ? s : `${s}.`));
 }
 
 /* ──────────────────────────────────────────────
@@ -332,54 +291,55 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
               </div>
             </div>
 
-            {/* Points forts */}
-            {advantages.length > 0 && (
-              <div className="info-section" data-reveal data-reveal-delay="1">
-                <div className="info-section__header">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="2">
-                    <circle cx="12" cy="12" r="10" />
-                    <polyline points="9 12 11 14 15 10" />
-                  </svg>
-                  <span className="text-eyebrow">Points forts</span>
-                </div>
-                <ul className="info-list">
-                  {advantages.map((item, i) => (
-                    <li key={i} className="info-list-item">
-                      <CheckIcon />
-                      <span className="info-list-item__text">
-                        {item.title && <strong>{item.title}</strong>}
-                        {item.title && " — "}
-                        {item.detail}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            {/* Points forts & Points d'attention — side by side cards */}
+            {(advantages.length > 0 || disadvantages.length > 0) && (
+              <div className="points-grid" data-reveal data-reveal-delay="1">
+                {/* Points forts */}
+                {advantages.length > 0 && (
+                  <div className="points-card points-card--positive">
+                    <div className="points-card__header">
+                      <svg className="points-card__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                        <polyline points="22 4 12 14.01 9 11.01" />
+                      </svg>
+                      <span className="points-card__title">Points forts</span>
+                    </div>
+                    <ul className="points-list">
+                      {advantages.map((item, i) => (
+                        <li key={i} className="points-list__item">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
-            {/* Points d'attention */}
-            {disadvantages.length > 0 && (
-              <div className="info-section info-section--attention" data-reveal data-reveal-delay="2">
-                <div className="info-section__header">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--clr-mauve)" strokeWidth="2">
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" y1="8" x2="12" y2="12" />
-                    <line x1="12" y1="16" x2="12.01" y2="16" />
-                  </svg>
-                  <span className="text-eyebrow">Points d'attention</span>
-                </div>
-                <ul className="info-list">
-                  {disadvantages.map((item, i) => (
-                    <li key={i} className="info-list-item">
-                      <AlertIcon />
-                      <span className="info-list-item__text">
-                        {item.title && <strong>{item.title}</strong>}
-                        {item.title && " — "}
-                        {item.detail}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                {/* Points d'attention */}
+                {disadvantages.length > 0 && (
+                  <div className="points-card points-card--warning">
+                    <div className="points-card__header">
+                      <svg className="points-card__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                      </svg>
+                      <span className="points-card__title">Points d'attention</span>
+                    </div>
+                    <ul className="points-list">
+                      {disadvantages.map((item, i) => (
+                        <li key={i} className="points-list__item">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="var(--clr-mauve)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                          </svg>
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
           </div>
