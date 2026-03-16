@@ -281,79 +281,83 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
     );
   }
 
+  const currentStepIndex = applicableSteps.findIndex((s) => s.id === currentStep?.id);
+
   return (
     <div className="ds4-body">
       <nav className="nav-bar scrolled">
         <a className="nav-logo-text" href="/">Anaxago</a>
       </nav>
 
-      <main style={{ paddingTop: 100 }}>
-        <div style={{ maxWidth: 640, margin: "0 auto", padding: "var(--space-xl)" }}>
-          {/* Header */}
-          <a href={`/souscrire/${slug}`} style={{ fontFamily: "var(--font-display)", fontSize: 13, fontWeight: 600, color: "var(--clr-cashmere)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6, marginBottom: "var(--space-md)" }}>
+      <main className="journey-layout">
+        {/* ── LEFT: Sidebar stepper ── */}
+        <aside className="journey-sidebar">
+          <a href={`/souscrire/${slug}`} className="journey-sidebar__back">
             ← Retour au produit
           </a>
 
-          {/* Step navigation */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 0, marginBottom: "var(--space-lg)", background: "var(--clr-off-white)", border: "1px solid var(--clr-stroke-dark)", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
+          <div className="journey-sidebar__progress">
+            <span className="journey-sidebar__progress-text">
+              {completedCount}/{applicableSteps.length} complétées
+            </span>
+            <div className="journey-sidebar__progress-bar">
+              <div className="journey-sidebar__progress-fill" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+
+          <nav className="journey-stepper">
             {applicableSteps.map((step, i) => {
               const isCurrent = currentStep?.id === step.id;
               const isCompleted = step.stepStatus === "COMPLETED";
+              const isPast = i < currentStepIndex;
+
               return (
-                <div key={step.id} style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  padding: "12px 16px",
-                  borderBottom: i < applicableSteps.length - 1 ? "1px solid var(--clr-stroke-dark)" : "none",
-                  background: isCurrent ? "var(--clr-primary-light)" : "transparent",
-                }}>
-                  <div style={{
-                    width: 24, height: 24, borderRadius: "50%",
-                    background: isCompleted ? "var(--clr-primary)" : isCurrent ? "var(--clr-primary)" : "var(--clr-stroke-dark)",
-                    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-                  }}>
-                    {isCompleted ? (
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
-                    ) : (
-                      <span style={{ fontFamily: "var(--font-display)", fontSize: 11, fontWeight: 700, color: isCurrent ? "white" : "var(--clr-cashmere)" }}>{i + 1}</span>
+                <div key={step.id} className={`journey-stepper__item${isCurrent ? " journey-stepper__item--active" : ""}${isCompleted ? " journey-stepper__item--done" : ""}`}>
+                  <div className="journey-stepper__connector">
+                    <div className={`journey-stepper__dot${isCompleted ? " journey-stepper__dot--done" : ""}${isCurrent ? " journey-stepper__dot--active" : ""}`}>
+                      {isCompleted ? (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
+                      ) : (
+                        <span>{i + 1}</span>
+                      )}
+                    </div>
+                    {i < applicableSteps.length - 1 && (
+                      <div className={`journey-stepper__line${isPast || isCompleted ? " journey-stepper__line--done" : ""}`} />
                     )}
                   </div>
-                  <span style={{
-                    fontFamily: "var(--font-display)",
-                    fontSize: 13,
-                    fontWeight: isCurrent ? 600 : 400,
-                    color: isCompleted ? "var(--clr-cashmere)" : isCurrent ? "var(--clr-obsidian)" : "var(--clr-cashmere)",
-                  }}>
-                    {STEP_TYPE_LABELS[step.stepType] ?? step.stepType}
-                  </span>
-                  {isCurrent && (
-                    <span style={{ marginLeft: "auto", fontFamily: "var(--font-display)", fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--clr-primary)" }}>En cours</span>
-                  )}
+                  <div className="journey-stepper__label">
+                    <span className="journey-stepper__name">
+                      {STEP_TYPE_LABELS[step.stepType] ?? step.stepType}
+                    </span>
+                    {isCurrent && <span className="journey-stepper__badge">En cours</span>}
+                  </div>
                 </div>
               );
             })}
-          </div>
+          </nav>
+        </aside>
 
+        {/* ── RIGHT: Step content ── */}
+        <section className="journey-content">
           {/* Error message */}
           {actionError && (
             <div className="form-error" style={{ marginBottom: "var(--space-md)" }}>{actionError}</div>
           )}
 
-          {/* ━━ ACTIVE STEP PANEL (auto-opened) ━━ */}
+          {/* Active step panel */}
           {activeStep && activeStep.stepStatus !== "COMPLETED" && (
             renderStepPanel(activeStep)
           )}
 
           {/* Journey completed */}
           {journey.status === "COMPLETED" && (
-            <div style={{ padding: "var(--space-xl)", background: "var(--clr-primary-light)", borderRadius: "var(--radius-md)", textAlign: "center" }}>
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="1.5" style={{ margin: "0 auto var(--space-md)" }}><circle cx="12" cy="12" r="10" /><polyline points="9 12 11 14 15 10" /></svg>
-              <h2 style={{ fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 300, color: "var(--clr-obsidian)", marginBottom: "var(--space-xs)" }}>Parcours terminé</h2>
-              <p style={{ fontSize: 14, color: "var(--clr-cashmere)" }}>Votre souscription est en cours de traitement.</p>
+            <div style={{ padding: "var(--space-2xl) var(--space-xl)", background: "var(--clr-primary-light)", borderRadius: "var(--radius-md)", textAlign: "center" }}>
+              <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="1.5" style={{ margin: "0 auto var(--space-md)" }}><circle cx="12" cy="12" r="10" /><polyline points="9 12 11 14 15 10" /></svg>
+              <h2 style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 300, color: "var(--clr-obsidian)", marginBottom: "var(--space-xs)" }}>Parcours terminé</h2>
+              <p style={{ fontSize: 15, color: "var(--clr-cashmere)", maxWidth: 400, margin: "0 auto" }}>Votre souscription est en cours de traitement. Vous recevrez un email de confirmation.</p>
             </div>
           )}
-        </div>
+        </section>
       </main>
     </div>
   );
