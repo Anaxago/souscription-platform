@@ -5,6 +5,7 @@ interface Props {
   stepId: string;
   investorId: string;
   personKernelId: string;
+  requiredCategories: string[] | null;
   actionUrl: string;
   onComplete: () => void;
 }
@@ -52,6 +53,7 @@ export default function InvestorProfileStep({
   stepId,
   investorId,
   personKernelId,
+  requiredCategories,
   actionUrl,
   onComplete,
 }: Props) {
@@ -83,9 +85,14 @@ export default function InvestorProfileStep({
         const questions = (result as { data: Question[] }).data ?? (result as Question[]);
         const qList = Array.isArray(questions) ? questions : [];
 
+        // Filter by required categories if specified
+        const filtered = requiredCategories && requiredCategories.length > 0
+          ? qList.filter((q) => requiredCategories.includes(q.category))
+          : qList;
+
         // Group by category and order
         const grouped = new Map<string, Question[]>();
-        for (const q of qList) {
+        for (const q of filtered) {
           const existing = grouped.get(q.category) ?? [];
           existing.push(q);
           grouped.set(q.category, existing);
