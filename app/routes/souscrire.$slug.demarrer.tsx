@@ -90,18 +90,22 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   // Step 2b: Find active template to get issuanceOperationId
   let issuanceOperationId: string | undefined;
-  const templatesRes = await api("/subscription-journey-templates");
-  if (templatesRes.ok) {
-    const templates = (await templatesRes.json()) as {
-      data?: { marketingProductId: string; issuanceOperationId: string | null; status: string }[];
-    };
-    const list = templates.data ?? (templates as unknown as { marketingProductId: string; issuanceOperationId: string | null; status: string }[]);
-    const match = (Array.isArray(list) ? list : []).find(
-      (t) => t.marketingProductId === marketingProductId && t.status === "ACTIVE" && t.issuanceOperationId,
-    );
-    if (match?.issuanceOperationId) {
-      issuanceOperationId = match.issuanceOperationId;
+  try {
+    const templatesRes = await api("/subscription-journey-templates");
+    if (templatesRes.ok) {
+      const body = (await templatesRes.json()) as {
+        data: { marketingProductId: string; issuanceOperationId: string | null; status: string }[];
+      };
+      const list = body.data ?? [];
+      const match = list.find(
+        (t) => t.marketingProductId === marketingProductId && t.status === "ACTIVE" && t.issuanceOperationId,
+      );
+      if (match?.issuanceOperationId) {
+        issuanceOperationId = match.issuanceOperationId;
+      }
     }
+  } catch {
+    // Non-blocking — proceed without issuanceOperationId
   }
 
   // Step 3: Create SubscriptionJourney
