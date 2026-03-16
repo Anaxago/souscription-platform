@@ -290,12 +290,14 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
             )}
           </div>
 
+        </div>
+
           {heroImage && (
             <div className="hero-dark__media">
+              <div className="hero-dark__media-overlay" />
               <img src={heroImage} alt={product.name} />
             </div>
           )}
-        </div>
 
         {/* Reassurance band — value/label pairs */}
         <div className="hero-dark__reassurance-wrap">

@@ -63,6 +63,23 @@ html, body {
 }
 
 /* ──────────────────────────────────────────────
+   DS4 — Global outline reset (kill dashed borders)
+   ────────────────────────────────────────────── */
+.ds4-body *,
+.ds4-body *:focus,
+.ds4-body *:focus-visible,
+.ds4-body *:focus-within {
+  outline: none !important;
+  box-shadow: none !important;
+}
+.ds4-body button:focus-visible,
+.ds4-body a:focus-visible {
+  outline: 2px solid rgba(26, 93, 86, 0.5) !important;
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+/* ──────────────────────────────────────────────
    DS4 — Layout
    ────────────────────────────────────────────── */
 .ds4-body {
@@ -178,71 +195,90 @@ html, body {
    DS4 — Hero dark
    ────────────────────────────────────────────── */
 .hero-dark {
+  position: relative;
+  overflow: hidden;
+  min-height: 540px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   background: var(--clr-obsidian);
   color: var(--clr-ecru-type);
 }
 .hero-dark__inner {
+  position: relative;
+  z-index: 2;
   max-width: var(--max-width);
   margin: 0 auto;
-  padding: calc(var(--space-3xl) + 68px) var(--space-xl) var(--space-xl);
+  padding: calc(var(--space-xl) + 68px) var(--space-xl) var(--space-lg);
   box-sizing: border-box;
+  width: 100%;
+}
+.hero-dark__inner--with-media .hero-dark__text {
+  max-width: 55%;
+}
+.hero-dark__text {
+  min-width: 0;
 }
 .hero-dark .text-h1 {
   color: var(--clr-off-white);
 }
 
-/* Hero two-column layout when media (image or video) is present */
-.hero-dark__inner--with-media {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-xl);
-  align-items: center;
-}
-.hero-dark__text {
-  min-width: 0;
-}
+/* Hero image — absolute right with gradient fade */
 .hero-dark__media {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  z-index: 0;
 }
 .hero-dark__media img {
   width: 100%;
-  max-width: 480px;
-  height: auto;
-  border-radius: var(--radius-md);
+  height: 100%;
   object-fit: cover;
+  object-position: center top;
+}
+.hero-dark__media-overlay {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(to right, var(--clr-obsidian) 0%, transparent 100%);
+  pointer-events: none;
 }
 .hero-dark__media iframe {
   width: 100%;
-  aspect-ratio: 16 / 9;
+  height: 100%;
   border: none;
-  border-radius: var(--radius-md);
+  object-fit: cover;
 }
 .hero-dark__media video {
   width: 100%;
-  max-width: 480px;
-  border-radius: var(--radius-md);
+  height: 100%;
+  object-fit: cover;
 }
 
-/* Reassurance band sits below the two-column grid */
+/* Reassurance band */
 .hero-dark__reassurance-wrap {
+  position: relative;
+  z-index: 2;
   max-width: var(--max-width);
   margin: 0 auto;
-  padding: 0 var(--space-xl);
+  padding: 0 var(--space-xl) var(--space-xl);
   box-sizing: border-box;
+  width: 100%;
 }
 
 @media (max-width: 940px) {
-  .hero-dark__inner--with-media {
-    grid-template-columns: 1fr;
+  .hero-dark {
+    min-height: auto;
+  }
+  .hero-dark__inner--with-media .hero-dark__text {
+    max-width: 100%;
   }
   .hero-dark__media {
-    order: -1;
-  }
-  .hero-dark__media img,
-  .hero-dark__media video {
-    max-width: 100%;
+    display: none;
   }
 }
 
@@ -714,19 +750,6 @@ html, body {
 }
 
 /* ──────────────────────────────────────────────
-   DS4 — Global focus reset
-   ────────────────────────────────────────────── */
-.ds4-body button,
-.ds4-body a {
-  outline: none;
-}
-.ds4-body button:focus-visible,
-.ds4-body a:focus-visible {
-  outline: 2px solid var(--clr-primary);
-  outline-offset: 3px;
-}
-
-/* ──────────────────────────────────────────────
    DS4 — Buttons
    ────────────────────────────────────────────── */
 .btn-primary {
@@ -736,15 +759,11 @@ html, body {
   border: 1px solid var(--clr-primary); border-radius: var(--radius-pill);
   padding: 14px 28px; transition: var(--transition-fast);
   text-decoration: none; cursor: pointer;
-  outline: none; border-style: solid;
+  border-style: solid;
 }
 .btn-primary:hover {
   background: var(--clr-primary-dark);
   border-color: var(--clr-primary-dark);
-}
-.btn-primary:focus-visible {
-  outline: 2px solid var(--clr-primary);
-  outline-offset: 3px;
 }
 
 .btn-primary--hero {
