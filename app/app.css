@@ -1284,6 +1284,181 @@ html, body {
 }
 
 /* ──────────────────────────────────────────────
+   DS4 — Catalogue
+   ────────────────────────────────────────────── */
+.catalogue-hero {
+  background: var(--clr-obsidian);
+  padding: calc(var(--space-2xl) + 68px) var(--space-xl) var(--space-xl);
+}
+.catalogue-hero__inner {
+  max-width: var(--max-width);
+  margin: 0 auto;
+}
+.catalogue-hero__eyebrow {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--clr-mauve);
+  display: block;
+  margin-bottom: var(--space-md);
+}
+.catalogue-hero__title {
+  font-family: var(--font-display);
+  font-size: clamp(32px, 5vw, 56px);
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--clr-off-white);
+  margin: 0 0 var(--space-md);
+}
+.catalogue-hero__desc {
+  font-size: 17px;
+  color: var(--clr-mauve);
+  max-width: 560px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.catalogue-section {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: var(--space-xl);
+}
+
+.catalogue-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: var(--space-md);
+}
+
+/* Card */
+.catalogue-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--clr-off-white);
+  border: 1px solid var(--clr-stroke-dark);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  transition: var(--transition-fast);
+}
+.catalogue-card:hover {
+  border-color: var(--clr-cashmere);
+  box-shadow: 0 8px 24px rgba(13, 46, 43, 0.08);
+  transform: translateY(-2px);
+}
+
+.catalogue-card__image {
+  position: relative;
+  height: 180px;
+  background: var(--clr-ecru-bg);
+  overflow: hidden;
+}
+.catalogue-card__image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.catalogue-card__image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--clr-ecru-bg);
+}
+
+.catalogue-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+}
+.catalogue-badge--open { background: var(--clr-primary); color: var(--clr-off-white); }
+.catalogue-badge--soon { background: var(--clr-mauve); color: var(--clr-obsidian); }
+.catalogue-badge--full { background: var(--clr-stroke-dark); color: var(--clr-obsidian); }
+.catalogue-badge--closed { background: var(--clr-cashmere); color: var(--clr-off-white); }
+.catalogue-badge--draft { background: var(--clr-stroke-light); color: var(--clr-cashmere); }
+
+.catalogue-card__body {
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  flex: 1;
+}
+.catalogue-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.catalogue-card__name {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--clr-obsidian);
+  line-height: 1.3;
+  margin: 0;
+}
+.catalogue-card__desc {
+  font-size: 13px;
+  color: var(--clr-cashmere);
+  line-height: 1.5;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.catalogue-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--clr-stroke-dark);
+}
+.catalogue-card__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.catalogue-card__stat-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--clr-cashmere);
+}
+.catalogue-card__stat-value {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--clr-obsidian);
+}
+.catalogue-card__cta {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--clr-primary);
+}
+
+@media (max-width: 480px) {
+  .catalogue-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ──────────────────────────────────────────────
    DS4 — Scroll reveal animations
    ────────────────────────────────────────────── */
 [data-reveal] {
