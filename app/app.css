@@ -457,6 +457,32 @@ html, body {
 }
 
 /* ──────────────────────────────────────────────
+   DS4 — Video section
+   ────────────────────────────────────────────── */
+.video-section {
+  margin: var(--space-xl) 0;
+}
+.video-section__header {
+  margin-bottom: var(--space-md);
+}
+.video-section__player {
+  position: relative;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--clr-obsidian);
+}
+.video-section__player iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: none;
+  display: block;
+}
+.video-section__player video {
+  width: 100%;
+  display: block;
+}
+
+/* ──────────────────────────────────────────────
    DS4 — KV Grid
    ────────────────────────────────────────────── */
 .kv-grid {

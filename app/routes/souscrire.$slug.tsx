@@ -216,8 +216,7 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
       : null;
 
   const heroImage = product.imageUrl ? toDirectImageUrl(product.imageUrl) : null;
-  const heroVideo = product.videoUrl ? toEmbedVideoUrl(product.videoUrl) : null;
-  const hasHeroMedia = heroVideo != null || heroImage != null;
+  const videoEmbed = product.videoUrl ? toEmbedVideoUrl(product.videoUrl) : null;
 
   // Split product name on " - " for multi-line H1
   const nameParts = product.name.split(/\s*-\s*/);
@@ -241,7 +240,7 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
 
       {/* ━━ HERO DARK ━━ */}
       <section className="hero-dark">
-        <div className={`hero-dark__inner${hasHeroMedia ? " hero-dark__inner--with-media" : ""}`}>
+        <div className={`hero-dark__inner${heroImage ? " hero-dark__inner--with-media" : ""}`}>
           <div className="hero-dark__text">
             <span className={`badge ${status.className}`}>{status.label}</span>
 
@@ -274,27 +273,11 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
             )}
           </div>
 
-          {/* Video takes priority over image */}
-          {heroVideo ? (
-            <div className="hero-dark__media">
-              {isDirectVideoUrl(heroVideo) ? (
-                <video controls preload="metadata">
-                  <source src={heroVideo} />
-                </video>
-              ) : (
-                <iframe
-                  src={heroVideo}
-                  title={product.name}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              )}
-            </div>
-          ) : heroImage ? (
+          {heroImage && (
             <div className="hero-dark__media">
               <img src={heroImage} alt={product.name} />
             </div>
-          ) : null}
+          )}
         </div>
 
         {/* Reassurance band — value/label pairs */}
@@ -367,6 +350,29 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
                 </div>
               </div>
             </div>
+
+            {/* Video section */}
+            {videoEmbed && (
+              <div className="video-section" data-reveal data-reveal-delay="1">
+                <div className="video-section__header">
+                  <span className="text-eyebrow" style={{ marginBottom: 0 }}>Présentation</span>
+                </div>
+                <div className="video-section__player">
+                  {isDirectVideoUrl(videoEmbed) ? (
+                    <video controls preload="metadata">
+                      <source src={videoEmbed} />
+                    </video>
+                  ) : (
+                    <iframe
+                      src={videoEmbed}
+                      title={product.name}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Points forts & Points d'attention — side by side cards */}
             {(advantages.length > 0 || disadvantages.length > 0) && (
