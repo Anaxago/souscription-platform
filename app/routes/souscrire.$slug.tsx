@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { data } from "react-router";
 import type { Route } from "./+types/souscrire.$slug";
 import { api } from "~/lib/api.server";
@@ -30,6 +30,16 @@ interface MarketingProduct {
   recommendedDurationUnit: string | null;
   riskLevel: number | null;
   coolingOffPeriod: number | null;
+  documents: MarketingDocument[];
+}
+
+interface MarketingDocument {
+  id: string;
+  type: "BROCHURE" | "PRODUCT_SHEET" | "INVESTOR_PRESENTATION" | "OTHER";
+  name: string;
+  storageRef: string;
+  mimeType: string;
+  uploadedAt: string;
 }
 
 /* ──────────────────────────────────────────────
@@ -65,6 +75,13 @@ const HOLDING_CATEGORY_LABELS: Record<string, string> = {
   PEA: "PEA",
   PEA_PME: "PEA-PME",
   DIRECT_OWNERSHIP: "Détention directe",
+};
+
+const DOC_TYPE_LABELS: Record<string, string> = {
+  BROCHURE: "Brochure",
+  PRODUCT_SHEET: "Fiche produit",
+  INVESTOR_PRESENTATION: "Présentation investisseur",
+  OTHER: "Document",
 };
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
@@ -311,6 +328,17 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
         <div className="split-layout">
           {/* ── Left column (scrollable) ── */}
           <div className="split-layout__main">
+            {/* Tabs */}
+            <TabBar
+              tabs={[
+                { id: "investissement", label: "Investissement" },
+                ...(product.documents.length > 0
+                  ? [{ id: "documents" as const, label: `Documents (${product.documents.length})` }]
+                  : []),
+              ]}
+              productId={product.id}
+              documents={product.documents}
+            >
             {/* KV Grid — 6 data points */}
             <div data-reveal>
               <div className="kv-grid">
@@ -425,6 +453,7 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
                 )}
               </div>
             )}
+            </TabBar>
           </div>
 
           {/* ── Right column (sticky panel) ── */}
@@ -521,6 +550,122 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
           </a>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────
+   TabBar — switches between Investissement and Documents
+   ────────────────────────────────────────────── */
+
+interface Tab {
+  id: string;
+  label: string;
+}
+
+function TabBar({
+  tabs,
+  productId,
+  documents,
+  children,
+}: {
+  tabs: Tab[];
+  productId: string;
+  documents: MarketingDocument[];
+  children: React.ReactNode;
+}) {
+  const [activeTab, setActiveTab] = useState(tabs[0]?.id ?? "investissement");
+
+  return (
+    <>
+      {tabs.length > 1 && (
+        <div className="tabs">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              className={`tabs__item${activeTab === tab.id ? " tabs__item--active" : ""}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {activeTab === "investissement" && children}
+
+      {activeTab === "documents" && (
+        <DocumentsList productId={productId} documents={documents} />
+      )}
+    </>
+  );
+}
+
+/* ──────────────────────────────────────────────
+   Documents list
+   ────────────────────────────────────────────── */
+
+function DocumentsList({
+  productId,
+  documents,
+}: {
+  productId: string;
+  documents: MarketingDocument[];
+}) {
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+
+  async function handleDownload(docId: string) {
+    setLoadingId(docId);
+    try {
+      const res = await fetch(
+        `/souscrire/documents/${productId}/${docId}`,
+      );
+      if (!res.ok) throw new Error("Erreur lors du téléchargement");
+      const { downloadUrl } = (await res.json()) as { downloadUrl: string };
+      window.open(downloadUrl, "_blank");
+    } catch {
+      alert("Impossible de télécharger le document. Veuillez réessayer.");
+    } finally {
+      setLoadingId(null);
+    }
+  }
+
+  return (
+    <div className="documents-list" data-reveal>
+      {documents.map((doc) => (
+        <div key={doc.id} className="document-card">
+          <div className="document-card__icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <polyline points="10 9 9 9 8 9" />
+            </svg>
+          </div>
+          <div className="document-card__info">
+            <span className="document-card__name">{doc.name}</span>
+            <span className="document-card__type">
+              {DOC_TYPE_LABELS[doc.type] ?? doc.type}
+            </span>
+          </div>
+          <button
+            className="document-card__download"
+            onClick={() => handleDownload(doc.id)}
+            disabled={loadingId === doc.id}
+          >
+            {loadingId === doc.id ? (
+              <span className="document-card__spinner" />
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+            )}
+          </button>
+        </div>
+      ))}
     </div>
   );
 }

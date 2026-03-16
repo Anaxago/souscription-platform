@@ -457,6 +457,127 @@ html, body {
 }
 
 /* ──────────────────────────────────────────────
+   DS4 — Tabs
+   ────────────────────────────────────────────── */
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--clr-stroke-dark);
+  margin-bottom: var(--space-lg);
+}
+.tabs__item {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--clr-cashmere);
+  background: none;
+  border: none;
+  padding: var(--space-sm) var(--space-md);
+  cursor: pointer;
+  position: relative;
+  transition: color 0.2s ease;
+}
+.tabs__item:hover {
+  color: var(--clr-obsidian);
+}
+.tabs__item--active {
+  color: var(--clr-primary);
+}
+.tabs__item--active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--clr-primary);
+}
+
+/* ──────────────────────────────────────────────
+   DS4 — Documents list
+   ────────────────────────────────────────────── */
+.documents-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--clr-stroke-dark);
+  border: 1px solid var(--clr-stroke-dark);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.document-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-lg);
+  background: var(--clr-off-white);
+}
+.document-card__icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  background: var(--clr-primary-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.document-card__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.document-card__name {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--clr-obsidian);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.document-card__type {
+  font-size: 12px;
+  color: var(--clr-cashmere);
+}
+.document-card__download {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: none;
+  border: 1px solid var(--clr-stroke-dark);
+  color: var(--clr-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+.document-card__download:hover {
+  background: var(--clr-primary-light);
+  border-color: var(--clr-primary);
+}
+.document-card__download:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.document-card__spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--clr-stroke-dark);
+  border-top-color: var(--clr-primary);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ──────────────────────────────────────────────
    DS4 — Video section
    ────────────────────────────────────────────── */
 .video-section {
