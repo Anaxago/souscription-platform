@@ -3,6 +3,10 @@ import { data } from "react-router";
 import type { Route } from "./+types/souscrire.$slug";
 import { api } from "~/lib/api.server";
 
+/* ──────────────────────────────────────────────
+   Types
+   ────────────────────────────────────────────── */
+
 interface MarketingProduct {
   id: string;
   name: string;
@@ -27,6 +31,10 @@ interface MarketingProduct {
   coolingOffPeriod: number | null;
 }
 
+/* ──────────────────────────────────────────────
+   Label maps
+   ────────────────────────────────────────────── */
+
 const SECTOR_LABELS: Record<string, string> = {
   REAL_ESTATE: "Immobilier",
   PRIVATE_EQUITY: "Private Equity",
@@ -50,9 +58,9 @@ const REGION_LABELS: Record<string, string> = {
 };
 
 const HOLDING_CATEGORY_LABELS: Record<string, string> = {
-  AV: "Assurance-vie",
-  PER: "PER",
-  CTO: "Compte-titres",
+  AV: "Assurance-vie multisupport",
+  PER: "Plan d'Épargne Retraite",
+  CTO: "Compte-titres ordinaire",
   PEA: "PEA",
   PEA_PME: "PEA-PME",
   DIRECT_OWNERSHIP: "Détention directe",
@@ -66,21 +74,16 @@ const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   DRAFT: { label: "Brouillon", className: "badge--draft" },
 };
 
+/* ──────────────────────────────────────────────
+   Helpers
+   ────────────────────────────────────────────── */
+
 function formatCurrency(cents: number, currency: string): string {
   return new Intl.NumberFormat("fr-FR", {
     style: "currency",
     currency,
     minimumFractionDigits: 0,
   }).format(cents / 100);
-}
-
-function formatDuration(value: number, unit: string): string {
-  const unitLabels: Record<string, string> = {
-    YEARS: value > 1 ? "ans" : "an",
-    MONTHS: "mois",
-    DAYS: value > 1 ? "jours" : "jour",
-  };
-  return `${value} ${unitLabels[unit] ?? unit.toLowerCase()}`;
 }
 
 /**
@@ -95,9 +98,12 @@ function parseListItems(items: string[]): string[] {
     .map((s) => (s.endsWith(".") ? s : `${s}.`));
 }
 
+/* ──────────────────────────────────────────────
+   Loader & Meta
+   ────────────────────────────────────────────── */
+
 export async function loader({ params }: Route.LoaderArgs) {
   const { slug } = params;
-
   const response = await api(`/marketing-products/by-slug/${slug}`);
 
   if (!response.ok) {
@@ -126,20 +132,27 @@ export function meta({ data }: Route.MetaArgs) {
   ];
 }
 
+/* ──────────────────────────────────────────────
+   Page component
+   ────────────────────────────────────────────── */
+
 export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
   const { product } = loaderData;
   const status = STATUS_BADGE[product.status] ?? STATUS_BADGE.DRAFT;
   const canSubscribe = product.status === "OPEN";
   const advantages = parseListItems(product.keyAdvantages);
   const disadvantages = parseListItems(product.keyDisadvantages);
+  const ctaHref = `/souscrire/${product.slug}/demarrer`;
+  const minAmount =
+    product.minimumInvestmentInCents != null
+      ? formatCurrency(product.minimumInvestmentInCents, product.minimumInvestmentCurrency)
+      : null;
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("is-visible");
-          }
+          if (entry.isIntersecting) entry.target.classList.add("is-visible");
         });
       },
       { threshold: 0.1 },
@@ -150,15 +163,14 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
 
   return (
     <div className="ds4-body">
-      {/* ── Navbar ── */}
       <NavBar />
 
-      {/* ── Hero: Product header ── */}
-      <section className="section-light" style={{ paddingTop: 96 }}>
-        <div className="section-inner" data-reveal>
+      {/* ━━ HERO DARK ━━ */}
+      <section className="hero-dark">
+        <div className="hero-dark__inner">
           <span className={`badge ${status.className}`}>{status.label}</span>
 
-          <div className="fund-card__tags" style={{ margin: "var(--space-md) 0" }}>
+          <div className="fund-card__tags" style={{ marginTop: "var(--space-md)" }}>
             {product.investmentSectors.map((sector) => (
               <span key={sector} className="tag">
                 {SECTOR_LABELS[sector] ?? sector}
@@ -168,181 +180,204 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
 
           <h1 className="text-h1">{product.name}</h1>
 
-          {product.shortDescription && (
-            <p
-              style={{
-                fontSize: 17,
-                color: "var(--clr-cashmere)",
-                maxWidth: 640,
-                marginTop: "var(--space-md)",
-              }}
-            >
-              {product.shortDescription}
-            </p>
+          <p className="hero-tagline">
+            Construisez librement votre allocation avec un contrat d'assurance-vie
+            multisupport accessible et diversifié.
+          </p>
+
+          {canSubscribe && (
+            <a href={ctaHref} className="btn-primary btn-primary--hero">
+              Souscrire maintenant
+            </a>
           )}
-        </div>
-      </section>
 
-      {/* ── KV Grid: Key metrics ── */}
-      <section className="section-white">
-        <div className="container-ds4" data-reveal data-reveal-delay="1">
-          <div className="kv-grid">
-            {product.minimumInvestmentInCents != null && (
-              <div className="kv-item">
-                <span className="kv-item__key">Investissement minimum</span>
-                <span className="kv-item__value">
-                  {formatCurrency(product.minimumInvestmentInCents, product.minimumInvestmentCurrency)}
-                </span>
-              </div>
-            )}
-            {product.targetRegions.length > 0 && (
-              <div className="kv-item">
-                <span className="kv-item__key">Zones géographiques</span>
-                <span className="kv-item__value">
-                  {product.targetRegions.map((r) => REGION_LABELS[r] ?? r).join(", ")}
-                </span>
-              </div>
-            )}
-            {product.holdingCategory && (
-              <div className="kv-item">
-                <span className="kv-item__key">Type de contrat</span>
-                <span className="kv-item__value">
-                  {HOLDING_CATEGORY_LABELS[product.holdingCategory] ?? product.holdingCategory}
-                </span>
-              </div>
-            )}
-            {product.recommendedDurationValue != null && product.recommendedDurationUnit != null && (
-              <div className="kv-item">
-                <span className="kv-item__key">Durée recommandée</span>
-                <span className="kv-item__value">
-                  {formatDuration(product.recommendedDurationValue, product.recommendedDurationUnit)}
-                </span>
-              </div>
-            )}
-            {product.riskLevel != null && (
-              <div className="kv-item">
-                <span className="kv-item__key">Niveau de risque</span>
-                <span className="kv-item__value">{product.riskLevel} / 7</span>
-              </div>
-            )}
-            {product.coolingOffPeriod != null && (
-              <div className="kv-item">
-                <span className="kv-item__key">Délai de rétractation</span>
-                <span className="kv-item__value">{product.coolingOffPeriod} jours</span>
-              </div>
-            )}
+          <div className="hero-reassurance">
+            <span className="hero-reassurance__item">15 ans d'expertise</span>
+            <span className="hero-reassurance__dot" />
+            <span className="hero-reassurance__item">2 500+ investisseurs</span>
+            <span className="hero-reassurance__dot" />
+            <span className="hero-reassurance__item">CIF AMF</span>
+            <span className="hero-reassurance__dot" />
+            <span className="hero-reassurance__item">Generali Vie</span>
           </div>
         </div>
       </section>
 
-      {/* ── Description ── */}
-      {product.description && (
-        <section className="section-light">
-          <div className="section-inner" data-reveal data-reveal-delay="2">
-            <p
-              style={{
-                fontSize: 17,
-                lineHeight: 1.6,
-                color: "var(--clr-obsidian)",
-                maxWidth: 800,
-              }}
-            >
-              {product.description}
-            </p>
-          </div>
-        </section>
-      )}
-
-      {/* ── Points forts / Points d'attention ── */}
-      {(advantages.length > 0 || disadvantages.length > 0) && (
-        <section className="section-light">
-          <div
-            className="container-ds4"
-            style={{ paddingTop: "var(--space-xl)", paddingBottom: "var(--space-xl)" }}
-            data-reveal
-            data-reveal-delay="3"
-          >
-            <div className="info-grid">
-              {advantages.length > 0 && (
-                <div className="info-grid__col">
-                  <div style={{ display: "flex", alignItems: "center", gap: "var(--space-sm)", marginBottom: "var(--space-md)" }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="2">
-                      <circle cx="12" cy="12" r="10" />
-                      <polyline points="9 12 11 14 15 10" />
-                    </svg>
-                    <span className="text-eyebrow" style={{ marginBottom: 0 }}>
-                      Points forts
+      {/* ━━ BODY: 60/40 SPLIT ━━ */}
+      <section className="section-light">
+        <div className="split-layout">
+          {/* ── Left column (scrollable) ── */}
+          <div className="split-layout__main">
+            {/* KV Grid — 6 data points */}
+            <div data-reveal>
+              <div className="kv-grid">
+                {minAmount && (
+                  <div className="kv-item">
+                    <span className="kv-item__key">Investissement min.</span>
+                    <span className="kv-item__value">{minAmount}</span>
+                  </div>
+                )}
+                <div className="kv-item">
+                  <span className="kv-item__key">Assureur</span>
+                  <span className="kv-item__value">Generali Vie</span>
+                </div>
+                <div className="kv-item">
+                  <span className="kv-item__key">Horizon recommandé</span>
+                  <span className="kv-item__value">8 ans</span>
+                </div>
+                {product.holdingCategory && (
+                  <div className="kv-item">
+                    <span className="kv-item__key">Type</span>
+                    <span className="kv-item__value">
+                      {HOLDING_CATEGORY_LABELS[product.holdingCategory] ?? product.holdingCategory}
                     </span>
                   </div>
-                  <ul className="info-list">
-                    {advantages.map((item, i) => (
-                      <li key={i} className="info-list-item">
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {disadvantages.length > 0 && (
-                <div className="info-grid__col">
-                  <div style={{ display: "flex", alignItems: "center", gap: "var(--space-sm)", marginBottom: "var(--space-md)" }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--clr-mauve)" strokeWidth="2">
-                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                      <line x1="12" y1="9" x2="12" y2="13" />
-                      <line x1="12" y1="17" x2="12.01" y2="17" />
-                    </svg>
-                    <span className="text-eyebrow" style={{ marginBottom: 0, color: "var(--clr-mauve)" }}>
-                      Points d'attention
+                )}
+                {product.targetRegions.length > 0 && (
+                  <div className="kv-item">
+                    <span className="kv-item__key">Zones géographiques</span>
+                    <span className="kv-item__value">
+                      {product.targetRegions.map((r) => REGION_LABELS[r] ?? r).join(", ")}
                     </span>
                   </div>
-                  <ul className="info-list">
-                    {disadvantages.map((item, i) => (
-                      <li key={i} className="info-list-item">
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
+                )}
+                <div className="kv-item">
+                  <span className="kv-item__key">Avantage fiscal</span>
+                  <span className="kv-item__value">Abattement après 8 ans</span>
                 </div>
-              )}
+              </div>
             </div>
-          </div>
-        </section>
-      )}
 
-      {/* ── CTA ── */}
-      <section className="section-dark">
-        <div className="cta-dark">
-          <div className="cta-dark-text">
-            <span className="text-eyebrow">Prêt à investir ?</span>
-            <h2 className="section-title" style={{ color: "var(--clr-off-white)" }}>
-              {canSubscribe
-                ? `Souscrivez à ${product.name}${product.minimumInvestmentInCents != null ? ` dès ${formatCurrency(product.minimumInvestmentInCents, product.minimumInvestmentCurrency)}` : ""}.`
-                : "Ce produit n'est pas ouvert à la souscription pour le moment."}
-            </h2>
-          </div>
-          <div className="cta-dark-actions">
-            {canSubscribe ? (
-              <a href={`/souscrire/${product.slug}/demarrer`} className="btn-primary">
-                Souscrire maintenant
-              </a>
-            ) : (
-              <span
-                className="btn-primary"
-                style={{ opacity: 0.5, cursor: "not-allowed", pointerEvents: "none" }}
-              >
-                Souscription fermée
-              </span>
+            {/* Points forts */}
+            {advantages.length > 0 && (
+              <div className="info-section" data-reveal data-reveal-delay="1">
+                <div className="info-section__header">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="9 12 11 14 15 10" />
+                  </svg>
+                  <span className="text-eyebrow">Points forts</span>
+                </div>
+                <ul className="info-list">
+                  {advantages.map((item, i) => (
+                    <li key={i} className="info-list-item">{item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Points d'attention */}
+            {disadvantages.length > 0 && (
+              <div className="info-section" data-reveal data-reveal-delay="2">
+                <div className="info-section__header">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--clr-mauve)" strokeWidth="2">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                    <line x1="12" y1="9" x2="12" y2="13" />
+                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                  </svg>
+                  <span className="text-eyebrow" style={{ color: "var(--clr-mauve)" }}>
+                    Points d'attention
+                  </span>
+                </div>
+                <ul className="info-list">
+                  {disadvantages.map((item, i) => (
+                    <li key={i} className="info-list-item">{item}</li>
+                  ))}
+                </ul>
+              </div>
             )}
           </div>
+
+          {/* ── Right column (sticky panel) ── */}
+          <aside className="split-layout__aside">
+            <div className="sticky-panel">
+              <span className="sticky-panel__amount-label">À partir de</span>
+              <div className="sticky-panel__amount">{minAmount ?? "—"}</div>
+
+              {canSubscribe ? (
+                <a href={ctaHref} className="btn-primary">
+                  Souscrire maintenant
+                </a>
+              ) : (
+                <span
+                  className="btn-primary"
+                  style={{ width: "100%", justifyContent: "center", opacity: 0.5, cursor: "not-allowed", pointerEvents: "none" }}
+                >
+                  Souscription fermée
+                </span>
+              )}
+
+              {/* Reassurance items */}
+              <div className="sticky-panel__reassurance">
+                <div className="sticky-panel__reassurance-item">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                  Signature électronique sécurisée
+                </div>
+                <div className="sticky-panel__reassurance-item">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                  Souscription en 15 min
+                </div>
+                <div className="sticky-panel__reassurance-item">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  </svg>
+                  CIF enregistré AMF &middot; Generali Vie
+                </div>
+              </div>
+
+              {/* Timeline */}
+              <div className="timeline">
+                <div className="timeline__title">Étapes de souscription</div>
+                <div className="timeline__steps">
+                  <div className="timeline__step">
+                    <div className="timeline__dot">1</div>
+                    <div className="timeline__line" />
+                    <span className="timeline__label">Profil investisseur</span>
+                  </div>
+                  <div className="timeline__step">
+                    <div className="timeline__dot">2</div>
+                    <div className="timeline__line" />
+                    <span className="timeline__label">Documents &amp; justificatifs</span>
+                  </div>
+                  <div className="timeline__step">
+                    <div className="timeline__dot">3</div>
+                    <span className="timeline__label">Signature &amp; paiement</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </aside>
         </div>
       </section>
+
+      {/* ━━ MOBILE STICKY BAR ━━ */}
+      {canSubscribe && (
+        <div className="mobile-sticky-bar">
+          <div className="mobile-sticky-bar__info">
+            <div className="mobile-sticky-bar__name">{product.name}</div>
+            {minAmount && (
+              <div className="mobile-sticky-bar__amount">Dès {minAmount}</div>
+            )}
+          </div>
+          <a href={ctaHref} className="btn-primary">
+            Souscrire &rarr;
+          </a>
+        </div>
+      )}
     </div>
   );
 }
 
 /* ──────────────────────────────────────────────
-   Navbar component with scroll behavior
+   Navbar with scroll behavior
    ────────────────────────────────────────────── */
+
 function NavBar() {
   useEffect(() => {
     const nav = document.getElementById("ds4-nav");
