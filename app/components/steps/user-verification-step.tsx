@@ -16,9 +16,8 @@ interface UploadedDoc {
 }
 
 const DOC_TYPES = [
-  { type: "PASSPORT", label: "Passeport", accept: "image/*,application/pdf" },
-  { type: "NATIONAL_ID", label: "Carte d'identité", accept: "image/*,application/pdf" },
-  { type: "PROOF_OF_ADDRESS", label: "Justificatif de domicile", accept: "image/*,application/pdf" },
+  { type: "NATIONAL_ID", label: "Carte d'identité ou passeport", accept: "image/*,application/pdf", required: true },
+  { type: "PROOF_OF_ADDRESS", label: "Justificatif de domicile", accept: "image/*,application/pdf", required: true },
 ] as const;
 
 export default function UserVerificationStep({
@@ -29,12 +28,12 @@ export default function UserVerificationStep({
   actionUrl,
   onComplete,
 }: Props) {
-  const [verificationId, setVerificationId] = useState<string | null>(null);
   const [uploading, setUploading] = useState<string | null>(null);
   const [uploadedDocs, setUploadedDocs] = useState<UploadedDoc[]>([]);
   const [completing, setCompleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [initialized, setInitialized] = useState(false);
+  const [verificationId, setVerificationId] = useState<string | null>(null);
+  const [initAttempted, setInitAttempted] = useState(false);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   async function callAction(payload: Record<string, unknown>) {
@@ -50,65 +49,71 @@ export default function UserVerificationStep({
     return res.json();
   }
 
-  async function initVerification() {
-    setError(null);
+  // Try to init person-verification (best effort)
+  async function ensureVerification() {
+    if (initAttempted) return verificationId;
+    setInitAttempted(true);
     try {
-      // Try to initiate a person-verification
       const result = await callAction({
         type: "initiate-verification",
         personId: personKernelId,
         investorId,
       });
       const vId = (result as Record<string, string>).verificationId ?? (result as Record<string, string>).id;
-      if (vId) {
-        setVerificationId(vId);
-        setInitialized(true);
-      } else {
-        // If person-verification is not available, go directly to upload phase
-        // with a dummy verificationId — uploads will use the journey document endpoint instead
-        setInitialized(true);
-      }
+      if (vId) setVerificationId(vId);
+      return vId ?? null;
     } catch {
-      // If person-verifications API fails (e.g. personKernelId not supported),
-      // skip to simplified flow: just mark as verified
-      setInitialized(true);
+      return null;
     }
   }
 
   async function handleFileUpload(docType: string, docLabel: string, file: File) {
-    if (!verificationId) return;
     setUploading(docType);
     setError(null);
 
     try {
-      // 1. Get presigned upload URL
-      const { uploadUrl, storageRef } = (await callAction({
-        type: "request-upload-url",
-        verificationId,
-        fileName: file.name,
-        contentType: file.type,
-      })) as { uploadUrl: string; storageRef: string; documentId: string };
+      // Try person-verification upload flow first
+      const vId = await ensureVerification();
 
-      // 2. Upload file directly to storage
-      const uploadRes = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": file.type },
-        body: file,
-      });
-      if (!uploadRes.ok) {
-        throw new Error("Erreur lors de l'envoi du fichier");
+      if (vId) {
+        // Full flow: presigned URL → upload → register
+        const { uploadUrl, storageRef } = (await callAction({
+          type: "request-upload-url",
+          verificationId: vId,
+          fileName: file.name,
+          contentType: file.type,
+        })) as { uploadUrl: string; storageRef: string; documentId: string };
+
+        const uploadRes = await fetch(uploadUrl, {
+          method: "PUT",
+          headers: { "Content-Type": file.type },
+          body: file,
+        });
+        if (!uploadRes.ok) throw new Error("Erreur lors de l'envoi du fichier");
+
+        await callAction({
+          type: "register-document",
+          verificationId: vId,
+          docType,
+          storageRef,
+          investorId,
+        });
+      } else {
+        // Fallback: use journey document endpoint
+        await callAction({
+          type: "upload-journey-document",
+          journeyId,
+          stepId,
+          documentType: docType,
+          documentId: `${docType}-${Date.now()}`,
+          fileName: file.name,
+        });
       }
 
-      // 3. Register the document
-      await callAction({
-        type: "register-document",
-        verificationId,
-        docType,
-        storageRef,
-        investorId,
-      });
-
-      setUploadedDocs((prev) => [...prev.filter((d) => d.type !== docType), { type: docType, label: docLabel, fileName: file.name }]);
+      setUploadedDocs((prev) => [
+        ...prev.filter((d) => d.type !== docType),
+        { type: docType, label: docLabel, fileName: file.name },
+      ]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur lors de l'upload");
     } finally {
@@ -133,39 +138,9 @@ export default function UserVerificationStep({
     }
   }
 
-  const hasRequiredDocs = uploadedDocs.length >= 1 || !verificationId;
+  const requiredDocs = DOC_TYPES.filter((d) => d.required);
+  const allRequiredUploaded = requiredDocs.every((d) => uploadedDocs.some((u) => u.type === d.type));
 
-  // Phase 1: Init verification
-  if (!initialized) {
-    return (
-      <div className="step-panel">
-        <div className="step-panel__header">
-          <div className="step-panel__icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-              <circle cx="8.5" cy="7" r="4" />
-              <polyline points="17 11 19 13 23 9" />
-            </svg>
-          </div>
-          <div>
-            <h2 className="step-panel__title">Vérification d'identité</h2>
-            <p className="step-panel__desc">
-              Pour souscrire, nous devons vérifier votre identité. Préparez une pièce d'identité
-              et un justificatif de domicile.
-            </p>
-          </div>
-        </div>
-
-        {error && <div className="form-error">{error}</div>}
-
-        <button className="btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={initVerification}>
-          Commencer la vérification
-        </button>
-      </div>
-    );
-  }
-
-  // Phase 2: Upload documents (or simplified validation if no verificationId)
   return (
     <div className="step-panel">
       <div className="step-panel__header">
@@ -177,20 +152,17 @@ export default function UserVerificationStep({
           </svg>
         </div>
         <div>
-          <h2 className="step-panel__title">
-            {verificationId ? "Documents d'identité" : "Vérification d'identité"}
-          </h2>
+          <h2 className="step-panel__title">Vérification d'identité</h2>
           <p className="step-panel__desc">
-            {verificationId
-              ? "Uploadez au moins une pièce d'identité pour continuer."
-              : "Confirmez votre identité pour poursuivre la souscription."}
+            Uploadez vos documents d'identité pour vérifier votre identité.
           </p>
         </div>
       </div>
 
       {error && <div className="form-error" style={{ marginBottom: "var(--space-md)" }}>{error}</div>}
 
-      {verificationId && <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
+      {/* Document upload cards — always shown */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
         {DOC_TYPES.map((doc) => {
           const uploaded = uploadedDocs.find((d) => d.type === doc.type);
           const isUploading = uploading === doc.type;
@@ -198,9 +170,14 @@ export default function UserVerificationStep({
           return (
             <div key={doc.type} className="upload-card">
               <div className="upload-card__info">
-                <span className="upload-card__label">{doc.label}</span>
-                {uploaded && (
+                <span className="upload-card__label">
+                  {doc.label}
+                  {doc.required && <span style={{ color: "var(--clr-mauve)", marginLeft: 4 }}>*</span>}
+                </span>
+                {uploaded ? (
                   <span className="upload-card__file">{uploaded.fileName}</span>
+                ) : (
+                  <span className="upload-card__file" style={{ fontStyle: "italic" }}>Non uploadé</span>
                 )}
               </div>
 
@@ -212,14 +189,27 @@ export default function UserVerificationStep({
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) handleFileUpload(doc.type, doc.label, file);
+                  e.target.value = "";
                 }}
               />
 
               {uploaded ? (
-                <div className="upload-card__status upload-card__status--done">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+                  <div className="upload-card__status upload-card__status--done">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </div>
+                  <button
+                    className="upload-card__btn"
+                    onClick={() => fileInputRefs.current[doc.type]?.click()}
+                    title="Remplacer"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
+                  </button>
                 </div>
               ) : (
                 <button
@@ -241,21 +231,25 @@ export default function UserVerificationStep({
             </div>
           );
         })}
-      </div>}
+      </div>
+
+      <p style={{ fontSize: 12, color: "var(--clr-cashmere)", marginTop: "var(--space-sm)" }}>
+        * Documents obligatoires
+      </p>
 
       <button
         className="btn-primary"
         style={{
           width: "100%",
           justifyContent: "center",
-          marginTop: "var(--space-lg)",
-          opacity: hasRequiredDocs && !completing ? 1 : 0.5,
-          cursor: hasRequiredDocs && !completing ? "pointer" : "not-allowed",
+          marginTop: "var(--space-md)",
+          opacity: allRequiredUploaded && !completing ? 1 : 0.5,
+          cursor: allRequiredUploaded && !completing ? "pointer" : "not-allowed",
         }}
-        disabled={!hasRequiredDocs || completing}
+        disabled={!allRequiredUploaded || completing}
         onClick={handleComplete}
       >
-        {completing ? "Validation en cours..." : "Valider la vérification"}
+        {completing ? "Validation en cours..." : "Valider ma vérification d'identité"}
       </button>
     </div>
   );
