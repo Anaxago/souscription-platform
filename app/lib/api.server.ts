@@ -27,12 +27,20 @@ export async function api(
 
   const url = `${baseUrl}${path}`;
 
+  const headers: Record<string, string> = {
+    "X-Api-Key": apiKey,
+  };
+
+  // Only set Content-Type for requests with a body
+  if (options.body) {
+    headers["Content-Type"] = "application/json";
+  }
+
   return fetch(url, {
     ...options,
     headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-      "X-Api-Key": apiKey,
+      ...headers,
+      ...(options.headers as Record<string, string>),
     },
   });
 }
