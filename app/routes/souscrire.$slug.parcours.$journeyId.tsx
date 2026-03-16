@@ -484,13 +484,14 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
               );
             }
 
-            if (step.stepType === "INVESTOR_PROFILE") {
+            if (step.stepType === "INVESTOR_PROFILE" && personKernelId) {
               return (
                 <div style={{ marginTop: "var(--space-lg)" }}>
                   <InvestorProfileStep
                     journeyId={journey.id}
                     stepId={step.id}
                     investorId={journey.investorId}
+                    personKernelId={personKernelId}
                     actionUrl={actionUrl}
                     onComplete={onStepComplete}
                   />

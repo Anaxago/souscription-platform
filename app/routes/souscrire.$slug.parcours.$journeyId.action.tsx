@@ -9,8 +9,8 @@ type ActionPayload =
   | { type: "request-upload-url"; verificationId: string; fileName: string; contentType: string }
   | { type: "register-document"; verificationId: string; docType: string; storageRef: string; investorId: string }
   | { type: "complete-verification"; journeyId: string; stepId: string }
-  | { type: "update-investor-profile"; investorId: string; riskTolerance: string; horizon: string; knowledgeLevel: string }
-  | { type: "add-source-of-wealth"; investorId: string; origin: string }
+  | { type: "fetch-assessment-questions" }
+  | { type: "submit-assessment-category"; investorId: string; personKernelId: string; category: string; answers: { questionId: string; questionVersion: number; questionWordingSnapshot: string; answerValue: string | string[] }[] }
   | { type: "answer-product-questions"; journeyId: string; answers: { questionId: string; questionLabel: string; answerId: string; snapshotted: boolean }[] }
   | { type: "add-basket-line"; journeyId: string; lineType: string; financialInstrumentId: string | null; requestedAmount: number }
   | { type: "set-envelope-target"; journeyId: string; targetType: string; envelopeType: string; existingEnvelopeRef?: string }
@@ -273,41 +273,96 @@ export async function action({ request }: Route.ActionArgs) {
       return Response.json(await res.json());
     }
 
-    /* ── Update investor profile ── */
-    case "update-investor-profile": {
-      const res = await api(`/individual-investors/${body.investorId}/profile`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          riskTolerance: body.riskTolerance,
-          horizon: body.horizon,
-          knowledgeLevel: body.knowledgeLevel,
-        }),
-      });
+    /* ── Fetch assessment questions ── */
+    case "fetch-assessment-questions": {
+      const res = await api("/assessment-questions?pageSize=100");
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        return errorResponse((err as Record<string, string>).message ?? "Erreur mise à jour profil", res.status);
+        return errorResponse((err as Record<string, string>).message ?? "Erreur chargement questions", res.status);
       }
       return Response.json(await res.json());
     }
 
-    /* ── Add source of wealth ── */
-    case "add-source-of-wealth": {
-      const res = await api(`/individual-investors/${body.investorId}/sources-of-wealth`, {
+    /* ── Submit assessment category (start session → answer → validate) ── */
+    case "submit-assessment-category": {
+      // 1. Get or create assessment
+      let assessmentId: string;
+      const existingRes = await api(`/investor-assessments/by-investor/${body.investorId}`);
+      if (existingRes.ok) {
+        const existing = (await existingRes.json()) as { id: string };
+        assessmentId = existing.id;
+      } else {
+        // No assessment yet — start-session will create one
+        assessmentId = "";
+      }
+
+      // 2. Start session for this category
+      const sessionRes = await api("/investor-assessments/start-session", {
         method: "POST",
         body: JSON.stringify({
-          origin: body.origin,
-          estimatedAmountCurrency: "EUR",
+          investorId: body.investorId,
+          investorType: "INDIVIDUAL",
+          category: body.category,
+          initiatedBy: body.personKernelId,
+          initiatedByRole: "CLIENT",
         }),
       });
-      if (!res.ok) {
-        // Ignore duplicate errors (409)
-        if (res.status === 409) {
-          return Response.json({ ok: true });
-        }
-        const err = await res.json().catch(() => ({}));
-        return errorResponse((err as Record<string, string>).message ?? "Erreur source de patrimoine", res.status);
+      if (!sessionRes.ok) {
+        const err = await sessionRes.json().catch(() => ({}));
+        return errorResponse((err as Record<string, string>).message ?? "Erreur démarrage session", sessionRes.status);
       }
-      return Response.json(await res.json());
+      const sessionData = (await sessionRes.json()) as { id: string; categoryStates: { category: string; sessions: { id: string; status: string }[] }[] };
+      assessmentId = sessionData.id;
+
+      // Find the session ID for this category (last DRAFT session)
+      const catState = sessionData.categoryStates?.find((cs: { category: string }) => cs.category === body.category);
+      const draftSession = catState?.sessions?.find((s: { status: string }) => s.status === "DRAFT");
+      const sessionId = draftSession?.id;
+
+      if (!sessionId) {
+        return errorResponse("Session non trouvée après création", 500);
+      }
+
+      // 3. Submit each answer
+      for (const answer of body.answers) {
+        const answerRes = await api(`/investor-assessments/${assessmentId}/answers`, {
+          method: "POST",
+          body: JSON.stringify({
+            category: body.category,
+            sessionId,
+            questionId: answer.questionId,
+            questionVersion: answer.questionVersion,
+            questionWordingSnapshot: answer.questionWordingSnapshot,
+            answerValue: answer.answerValue,
+            answeredBy: body.personKernelId,
+            answeredByRole: "CLIENT",
+          }),
+        });
+        if (!answerRes.ok) {
+          const err = await answerRes.json().catch(() => ({}));
+          return errorResponse((err as Record<string, string>).message ?? "Erreur soumission réponse", answerRes.status);
+        }
+      }
+
+      // 4. Validate session
+      const validateRes = await api(`/investor-assessments/${assessmentId}/validate-session`, {
+        method: "POST",
+        body: JSON.stringify({
+          category: body.category,
+          sessionId,
+          rawScore: body.answers.length,
+          normalizedScore: 5000,
+          scoringConfigVersion: 1,
+          label: body.category,
+          expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+        }),
+      });
+      if (!validateRes.ok) {
+        const err = await validateRes.json().catch(() => ({}));
+        return errorResponse((err as Record<string, string>).message ?? "Erreur validation session", validateRes.status);
+      }
+
+      return Response.json(await validateRes.json());
     }
 
     default:

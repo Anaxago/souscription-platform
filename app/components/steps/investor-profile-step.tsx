@@ -1,56 +1,66 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface Props {
   journeyId: string;
   stepId: string;
   investorId: string;
+  personKernelId: string;
   actionUrl: string;
   onComplete: () => void;
 }
 
-const RISK_OPTIONS = [
-  { value: "CONSERVATIVE", label: "Conservateur", desc: "Priorité à la préservation du capital" },
-  { value: "MODERATE", label: "Modéré", desc: "Équilibre entre sécurité et rendement" },
-  { value: "BALANCED", label: "Équilibré", desc: "Rendement régulier avec risque maîtrisé" },
-  { value: "DYNAMIC", label: "Dynamique", desc: "Recherche de performance avec risque élevé" },
-  { value: "AGGRESSIVE", label: "Offensif", desc: "Performance maximale, forte tolérance au risque" },
-];
+interface Question {
+  id: string;
+  version: number;
+  category: string;
+  wording: string;
+  type: "SINGLE_CHOICE" | "MULTIPLE_CHOICE";
+  choices: { choiceKey: string; label: string }[];
+}
 
-const HORIZON_OPTIONS = [
-  { value: "SHORT", label: "Court terme", desc: "Moins de 3 ans" },
-  { value: "MEDIUM", label: "Moyen terme", desc: "3 à 8 ans" },
-  { value: "LONG", label: "Long terme", desc: "Plus de 8 ans" },
-];
+interface GroupedCategory {
+  category: string;
+  label: string;
+  questions: Question[];
+}
 
-const KNOWLEDGE_OPTIONS = [
-  { value: "NOVICE", label: "Débutant", desc: "Peu ou pas d'expérience en investissement" },
-  { value: "INTERMEDIATE", label: "Intermédiaire", desc: "Quelques investissements réalisés" },
-  { value: "EXPERIENCED", label: "Expérimenté", desc: "Investisseur régulier avec une bonne connaissance des marchés" },
-];
+const CATEGORY_LABELS: Record<string, string> = {
+  KNOWLEDGE: "Connaissances financières",
+  EXPERIENCE: "Expérience d'investissement",
+  FINANCIAL_SITUATION: "Situation financière",
+  OBJECTIVE: "Objectifs d'investissement",
+  HORIZON: "Horizon de placement",
+  LOSS_CAPACITY: "Capacité de perte",
+  ESG_PREFERENCE: "Préférences ESG",
+  RISK_PROFILE: "Profil de risque",
+  MIFID_CLASSIFICATION: "Classification MiFID",
+};
 
-const WEALTH_ORIGINS = [
-  { value: "SALARY", label: "Revenus d'activité" },
-  { value: "SAVINGS", label: "Épargne" },
-  { value: "INHERITANCE", label: "Héritage" },
-  { value: "REAL_ESTATE_SALE", label: "Vente immobilière" },
-  { value: "DONATION", label: "Donation" },
-  { value: "OTHER", label: "Autre" },
+// Order categories for a natural flow
+const CATEGORY_ORDER = [
+  "FINANCIAL_SITUATION",
+  "OBJECTIVE",
+  "HORIZON",
+  "LOSS_CAPACITY",
+  "EXPERIENCE",
+  "KNOWLEDGE",
+  "ESG_PREFERENCE",
 ];
 
 export default function InvestorProfileStep({
   journeyId,
   stepId,
   investorId,
+  personKernelId,
   actionUrl,
   onComplete,
 }: Props) {
-  const [riskTolerance, setRiskTolerance] = useState<string>("");
-  const [horizon, setHorizon] = useState<string>("");
-  const [knowledgeLevel, setKnowledgeLevel] = useState<string>("");
-  const [wealthOrigins, setWealthOrigins] = useState<string[]>([]);
+  const [categories, setCategories] = useState<GroupedCategory[]>([]);
+  const [currentCatIndex, setCurrentCatIndex] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
+  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [phase, setPhase] = useState<"profile" | "wealth" | "confirm">("profile");
 
   async function callAction(payload: Record<string, unknown>) {
     const res = await fetch(actionUrl, {
@@ -65,53 +75,108 @@ export default function InvestorProfileStep({
     return res.json();
   }
 
-  async function handleSubmitProfile() {
-    if (!riskTolerance || !horizon || !knowledgeLevel) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      await callAction({
-        type: "update-investor-profile",
-        investorId,
-        riskTolerance,
-        horizon,
-        knowledgeLevel,
-      });
-      setPhase("wealth");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur");
-    } finally {
-      setSubmitting(false);
-    }
-  }
+  // Fetch assessment questions on mount
+  useEffect(() => {
+    async function fetchQuestions() {
+      try {
+        const result = await callAction({ type: "fetch-assessment-questions" });
+        const questions = (result as { data: Question[] }).data ?? (result as Question[]);
+        const qList = Array.isArray(questions) ? questions : [];
 
-  async function handleSubmitWealth() {
-    setSubmitting(true);
-    setError(null);
-    try {
-      for (const origin of wealthOrigins) {
-        await callAction({
-          type: "add-source-of-wealth",
-          investorId,
-          origin,
-        });
+        // Group by category and order
+        const grouped = new Map<string, Question[]>();
+        for (const q of qList) {
+          const existing = grouped.get(q.category) ?? [];
+          existing.push(q);
+          grouped.set(q.category, existing);
+        }
+
+        const ordered: GroupedCategory[] = [];
+        for (const cat of CATEGORY_ORDER) {
+          const qs = grouped.get(cat);
+          if (qs && qs.length > 0) {
+            ordered.push({
+              category: cat,
+              label: CATEGORY_LABELS[cat] ?? cat,
+              questions: qs,
+            });
+          }
+        }
+        // Add any remaining categories not in the order
+        for (const [cat, qs] of grouped) {
+          if (!CATEGORY_ORDER.includes(cat) && qs.length > 0) {
+            ordered.push({
+              category: cat,
+              label: CATEGORY_LABELS[cat] ?? cat,
+              questions: qs,
+            });
+          }
+        }
+
+        setCategories(ordered);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Erreur chargement questions");
+      } finally {
+        setLoading(false);
       }
-      setPhase("confirm");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur");
-    } finally {
-      setSubmitting(false);
     }
+    fetchQuestions();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const currentCat = categories[currentCatIndex];
+  const isLastCategory = currentCatIndex === categories.length - 1;
+  const totalQuestions = categories.reduce((sum, c) => sum + c.questions.length, 0);
+  const answeredCount = Object.keys(answers).length;
+
+  function allQuestionsAnsweredInCategory(cat: GroupedCategory): boolean {
+    return cat.questions.every((q) => {
+      const a = answers[q.id];
+      if (q.type === "MULTIPLE_CHOICE") return Array.isArray(a) && a.length > 0;
+      return typeof a === "string" && a.length > 0;
+    });
   }
 
-  async function handleComplete() {
+  function handleSingleAnswer(questionId: string, choiceKey: string) {
+    setAnswers((prev) => ({ ...prev, [questionId]: choiceKey }));
+  }
+
+  function handleMultipleAnswer(questionId: string, choiceKey: string) {
+    setAnswers((prev) => {
+      const current = (prev[questionId] as string[]) ?? [];
+      const next = current.includes(choiceKey)
+        ? current.filter((k) => k !== choiceKey)
+        : [...current, choiceKey];
+      return { ...prev, [questionId]: next };
+    });
+  }
+
+  async function handleNextCategory() {
+    if (!currentCat) return;
+
     setSubmitting(true);
     setError(null);
     try {
-      // INVESTOR_PROFILE is event-driven — step auto-completes when
-      // all required categories are validated after profile update.
-      // Just trigger onComplete to re-fetch the journey.
-      onComplete();
+      // Submit this category's answers via the assessment API
+      await callAction({
+        type: "submit-assessment-category",
+        investorId,
+        personKernelId,
+        category: currentCat.category,
+        answers: currentCat.questions.map((q) => ({
+          questionId: q.id,
+          questionVersion: q.version,
+          questionWordingSnapshot: q.wording,
+          answerValue: answers[q.id],
+        })),
+      });
+
+      if (isLastCategory) {
+        // All categories done — re-fetch journey to check if step auto-completed
+        onComplete();
+      } else {
+        setCurrentCatIndex((i) => i + 1);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur");
     } finally {
@@ -119,9 +184,34 @@ export default function InvestorProfileStep({
     }
   }
 
-  function toggleWealth(value: string) {
-    setWealthOrigins((prev) =>
-      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value],
+  if (loading) {
+    return (
+      <div className="step-panel">
+        <p style={{ textAlign: "center", color: "var(--clr-cashmere)", padding: "var(--space-lg)" }}>
+          Chargement du questionnaire...
+        </p>
+      </div>
+    );
+  }
+
+  if (categories.length === 0) {
+    return (
+      <div className="step-panel">
+        <div className="step-panel__header">
+          <div className="step-panel__icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="1.5">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="step-panel__title">Profil investisseur</h2>
+            <p className="step-panel__desc">Aucune question de profilage n'est configurée.</p>
+          </div>
+        </div>
+        <button className="btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={onComplete}>
+          Continuer
+        </button>
+      </div>
     );
   }
 
@@ -129,229 +219,128 @@ export default function InvestorProfileStep({
     <div className="step-panel">
       <div className="step-panel__header">
         <div className="step-panel__icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-            <circle cx="12" cy="7" r="4" />
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="1.5">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
           </svg>
         </div>
         <div>
-          <h2 className="step-panel__title">Profil investisseur</h2>
+          <h2 className="step-panel__title">{currentCat?.label}</h2>
           <p className="step-panel__desc">
-            {phase === "profile" && "Évaluation de votre tolérance au risque, horizon et connaissances."}
-            {phase === "wealth" && "D'où proviennent vos fonds d'investissement ?"}
-            {phase === "confirm" && "Vérifiez vos informations avant de valider."}
+            Catégorie {currentCatIndex + 1} sur {categories.length} — {answeredCount}/{totalQuestions} questions répondues
           </p>
         </div>
       </div>
 
-      {/* Progress dots */}
-      <div style={{ display: "flex", gap: 6, marginBottom: "var(--space-lg)" }}>
-        {(["profile", "wealth", "confirm"] as const).map((p, i) => (
-          <div
-            key={p}
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              background: phase === p ? "var(--clr-primary)" :
-                (["profile", "wealth", "confirm"].indexOf(phase) > i ? "var(--clr-primary)" : "var(--clr-stroke-dark)"),
-            }}
-          />
-        ))}
+      {/* Progress bar */}
+      <div style={{ marginBottom: "var(--space-lg)" }}>
+        <div style={{
+          height: 4,
+          borderRadius: 2,
+          background: "var(--clr-stroke-dark)",
+          overflow: "hidden",
+        }}>
+          <div style={{
+            height: "100%",
+            width: `${((currentCatIndex + 1) / categories.length) * 100}%`,
+            background: "var(--clr-primary)",
+            borderRadius: 2,
+            transition: "width 0.3s ease",
+          }} />
+        </div>
       </div>
 
       {error && <div className="form-error" style={{ marginBottom: "var(--space-md)" }}>{error}</div>}
 
-      {/* Phase 1: Profile */}
-      {phase === "profile" && (
+      {/* Questions */}
+      {currentCat && (
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-lg)" }}>
-          <RadioGroup
-            label="Tolérance au risque"
-            options={RISK_OPTIONS}
-            value={riskTolerance}
-            onChange={setRiskTolerance}
-          />
-          <RadioGroup
-            label="Horizon d'investissement"
-            options={HORIZON_OPTIONS}
-            value={horizon}
-            onChange={setHorizon}
-          />
-          <RadioGroup
-            label="Niveau de connaissance"
-            options={KNOWLEDGE_OPTIONS}
-            value={knowledgeLevel}
-            onChange={setKnowledgeLevel}
-          />
-
-          <button
-            className="btn-primary"
-            style={{
-              width: "100%",
-              justifyContent: "center",
-              opacity: riskTolerance && horizon && knowledgeLevel ? 1 : 0.5,
-            }}
-            disabled={!riskTolerance || !horizon || !knowledgeLevel || submitting}
-            onClick={handleSubmitProfile}
-          >
-            {submitting ? "Enregistrement..." : "Continuer"}
-          </button>
-        </div>
-      )}
-
-      {/* Phase 2: Sources of wealth */}
-      {phase === "wealth" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-md)" }}>
-          <label className="form-label">Origine de vos fonds (sélectionnez au moins une)</label>
-          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-xs)" }}>
-            {WEALTH_ORIGINS.map((opt) => (
-              <label
-                key={opt.value}
-                className="choice-card"
-                style={{
-                  borderColor: wealthOrigins.includes(opt.value) ? "var(--clr-primary)" : undefined,
-                  background: wealthOrigins.includes(opt.value) ? "var(--clr-primary-light)" : undefined,
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={wealthOrigins.includes(opt.value)}
-                  onChange={() => toggleWealth(opt.value)}
-                  style={{ display: "none" }}
-                />
-                <span className="choice-card__check">
-                  {wealthOrigins.includes(opt.value) && (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="3">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  )}
-                </span>
-                <span className="choice-card__label">{opt.label}</span>
+          {currentCat.questions.map((q, qi) => (
+            <div key={q.id}>
+              <label className="form-label" style={{ fontSize: 13, textTransform: "none", letterSpacing: "normal" }}>
+                {qi + 1}. {q.wording}
               </label>
-            ))}
-          </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-xs)" }}>
+                {q.choices.map((choice) => {
+                  const isSelected = q.type === "MULTIPLE_CHOICE"
+                    ? ((answers[q.id] as string[]) ?? []).includes(choice.choiceKey)
+                    : answers[q.id] === choice.choiceKey;
 
-          <button
-            className="btn-primary"
-            style={{
-              width: "100%",
-              justifyContent: "center",
-              marginTop: "var(--space-sm)",
-              opacity: wealthOrigins.length > 0 ? 1 : 0.5,
-            }}
-            disabled={wealthOrigins.length === 0 || submitting}
-            onClick={handleSubmitWealth}
-          >
-            {submitting ? "Enregistrement..." : "Continuer"}
-          </button>
+                  return (
+                    <label
+                      key={choice.choiceKey}
+                      className="choice-card"
+                      style={{
+                        borderColor: isSelected ? "var(--clr-primary)" : undefined,
+                        background: isSelected ? "var(--clr-primary-light)" : undefined,
+                      }}
+                    >
+                      <input
+                        type={q.type === "MULTIPLE_CHOICE" ? "checkbox" : "radio"}
+                        name={q.id}
+                        checked={isSelected}
+                        onChange={() =>
+                          q.type === "MULTIPLE_CHOICE"
+                            ? handleMultipleAnswer(q.id, choice.choiceKey)
+                            : handleSingleAnswer(q.id, choice.choiceKey)
+                        }
+                        style={{ display: "none" }}
+                      />
+                      {q.type === "MULTIPLE_CHOICE" ? (
+                        <span className="choice-card__check" style={{ borderColor: isSelected ? "var(--clr-primary)" : undefined }}>
+                          {isSelected && (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="3">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          )}
+                        </span>
+                      ) : (
+                        <span className="choice-card__radio" style={{ borderColor: isSelected ? "var(--clr-primary)" : undefined }}>
+                          {isSelected && <span className="choice-card__radio-dot" />}
+                        </span>
+                      )}
+                      <span className="choice-card__label">{choice.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Phase 3: Confirm */}
-      {phase === "confirm" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-md)" }}>
-          <div className="confirm-summary">
-            <div className="confirm-summary__row">
-              <span className="confirm-summary__label">Tolérance au risque</span>
-              <span className="confirm-summary__value">
-                {RISK_OPTIONS.find((o) => o.value === riskTolerance)?.label}
-              </span>
-            </div>
-            <div className="confirm-summary__row">
-              <span className="confirm-summary__label">Horizon</span>
-              <span className="confirm-summary__value">
-                {HORIZON_OPTIONS.find((o) => o.value === horizon)?.label}
-              </span>
-            </div>
-            <div className="confirm-summary__row">
-              <span className="confirm-summary__label">Connaissances</span>
-              <span className="confirm-summary__value">
-                {KNOWLEDGE_OPTIONS.find((o) => o.value === knowledgeLevel)?.label}
-              </span>
-            </div>
-            <div className="confirm-summary__row">
-              <span className="confirm-summary__label">Origine des fonds</span>
-              <span className="confirm-summary__value">
-                {wealthOrigins.map((o) => WEALTH_ORIGINS.find((w) => w.value === o)?.label).join(", ")}
-              </span>
-            </div>
-          </div>
+      <button
+        className="btn-primary"
+        style={{
+          width: "100%",
+          justifyContent: "center",
+          marginTop: "var(--space-lg)",
+          opacity: currentCat && allQuestionsAnsweredInCategory(currentCat) && !submitting ? 1 : 0.5,
+        }}
+        disabled={!currentCat || !allQuestionsAnsweredInCategory(currentCat) || submitting}
+        onClick={handleNextCategory}
+      >
+        {submitting ? "Enregistrement..." : isLastCategory ? "Valider mon profil" : "Catégorie suivante"}
+      </button>
 
-          <button
-            className="btn-primary"
-            style={{ width: "100%", justifyContent: "center" }}
-            disabled={submitting}
-            onClick={handleComplete}
-          >
-            {submitting ? "Validation..." : "Valider mon profil"}
-          </button>
-
-          <button
-            style={{
-              background: "none",
-              border: "none",
-              fontFamily: "var(--font-display)",
-              fontSize: 13,
-              fontWeight: 600,
-              color: "var(--clr-cashmere)",
-              cursor: "pointer",
-              textAlign: "center",
-            }}
-            onClick={() => setPhase("profile")}
-          >
-            Modifier mes réponses
-          </button>
-        </div>
+      {currentCatIndex > 0 && (
+        <button
+          style={{
+            background: "none",
+            border: "none",
+            fontFamily: "var(--font-display)",
+            fontSize: 13,
+            fontWeight: 600,
+            color: "var(--clr-cashmere)",
+            cursor: "pointer",
+            textAlign: "center",
+            width: "100%",
+            marginTop: "var(--space-sm)",
+          }}
+          onClick={() => setCurrentCatIndex((i) => i - 1)}
+        >
+          ← Catégorie précédente
+        </button>
       )}
-    </div>
-  );
-}
-
-/* ──────────────────────────────────────────────
-   Radio group component
-   ────────────────────────────────────────────── */
-
-function RadioGroup({
-  label,
-  options,
-  value,
-  onChange,
-}: {
-  label: string;
-  options: { value: string; label: string; desc: string }[];
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div>
-      <label className="form-label">{label}</label>
-      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-xs)" }}>
-        {options.map((opt) => (
-          <label
-            key={opt.value}
-            className="choice-card"
-            style={{
-              borderColor: value === opt.value ? "var(--clr-primary)" : undefined,
-              background: value === opt.value ? "var(--clr-primary-light)" : undefined,
-            }}
-          >
-            <input
-              type="radio"
-              name={label}
-              checked={value === opt.value}
-              onChange={() => onChange(opt.value)}
-              style={{ display: "none" }}
-            />
-            <span className="choice-card__radio">
-              {value === opt.value && <span className="choice-card__radio-dot" />}
-            </span>
-            <div style={{ flex: 1 }}>
-              <span className="choice-card__label">{opt.label}</span>
-              <span className="choice-card__desc">{opt.desc}</span>
-            </div>
-          </label>
-        ))}
-      </div>
     </div>
   );
 }
