@@ -78,10 +78,10 @@ const HOLDING_CATEGORY_LABELS: Record<string, string> = {
 };
 
 const DOC_TYPE_LABELS: Record<string, string> = {
-  BROCHURE: "Brochure",
-  PRODUCT_SHEET: "Fiche produit",
+  BROCHURE: "Brochure commerciale",
+  PRODUCT_SHEET: "Annexe financière",
   INVESTOR_PRESENTATION: "Présentation investisseur",
-  OTHER: "Document",
+  OTHER: "Document d'information",
 };
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
@@ -646,10 +646,10 @@ function DocumentsList({
             </svg>
           </div>
           <div className="document-card__info">
-            <span className="document-card__name">{doc.name}</span>
-            <span className="document-card__type">
+            <span className="document-card__name">
               {DOC_TYPE_LABELS[doc.type] ?? doc.type}
             </span>
+            <span className="document-card__type">PDF</span>
           </div>
           <button
             className="document-card__download"
