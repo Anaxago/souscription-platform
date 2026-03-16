@@ -98,17 +98,10 @@ export default function AdequacyCheckStep({
     }
   }
 
-  async function handleComplete() {
-    setChecking(true);
-    setError(null);
-    try {
-      await callAction({ type: "complete", journeyId, stepId });
-      onComplete();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur");
-    } finally {
-      setChecking(false);
-    }
+  async function handleContinue() {
+    // ADEQUACY_CHECK is event-driven. For NEUTRAL result,
+    // just re-fetch the journey to check if the step auto-completed.
+    onComplete();
   }
 
   const resultInfo = result ? RESULT_CONFIG[result] : null;
@@ -158,8 +151,8 @@ export default function AdequacyCheckStep({
 
       {/* Actions based on result */}
       {result === "NEUTRAL" && (
-        <button className="btn-primary" style={{ width: "100%", justifyContent: "center" }} disabled={checking} onClick={handleComplete}>
-          {checking ? "..." : "Continuer malgré l'avertissement"}
+        <button className="btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleContinue}>
+          Continuer malgré l'avertissement
         </button>
       )}
 

@@ -108,7 +108,9 @@ export default function InvestorProfileStep({
     setSubmitting(true);
     setError(null);
     try {
-      await callAction({ type: "complete", journeyId, stepId });
+      // INVESTOR_PROFILE is event-driven — step auto-completes when
+      // all required categories are validated after profile update.
+      // Just trigger onComplete to re-fetch the journey.
       onComplete();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur");

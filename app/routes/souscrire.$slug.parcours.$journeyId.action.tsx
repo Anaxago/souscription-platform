@@ -136,7 +136,7 @@ export async function action({ request }: Route.ActionArgs) {
       return Response.json(await res.json());
     }
 
-    /* ── Complete verification: set VERIFIED + complete step ── */
+    /* ── Complete verification: set VERIFIED (step auto-completes) ── */
     case "complete-verification": {
       const verifyRes = await api(
         `/subscription-journeys/${body.journeyId}/user-verification`,
@@ -149,16 +149,8 @@ export async function action({ request }: Route.ActionArgs) {
         const err = await verifyRes.json().catch(() => ({}));
         return errorResponse((err as Record<string, string>).message ?? "Erreur vérification", verifyRes.status);
       }
-
-      const completeRes = await api(
-        `/subscription-journeys/${body.journeyId}/steps/${body.stepId}/complete`,
-        { method: "POST" },
-      );
-      if (!completeRes.ok) {
-        const err = await completeRes.json().catch(() => ({}));
-        return errorResponse((err as Record<string, string>).message ?? "Erreur complétion étape", completeRes.status);
-      }
-      return Response.json(await completeRes.json());
+      // Step auto-completes via event — no need to call completeStep
+      return Response.json(await verifyRes.json());
     }
 
     /* ── Add basket line ── */
@@ -241,16 +233,8 @@ export async function action({ request }: Route.ActionArgs) {
         const err = await overrideRes.json().catch(() => ({}));
         return errorResponse((err as Record<string, string>).message ?? "Erreur override", overrideRes.status);
       }
-      // Complete the step after override
-      const completeRes = await api(
-        `/subscription-journeys/${body.journeyId}/steps/${body.stepId}/complete`,
-        { method: "POST" },
-      );
-      if (!completeRes.ok) {
-        const err = await completeRes.json().catch(() => ({}));
-        return errorResponse((err as Record<string, string>).message ?? "Erreur complétion", completeRes.status);
-      }
-      return Response.json(await completeRes.json());
+      // ADEQUACY_CHECK is event-driven — step auto-completes after override
+      return Response.json(await overrideRes.json());
     }
 
     /* ── Upload journey document ── */
