@@ -191,8 +191,8 @@ html, body {
   color: var(--clr-off-white);
 }
 
-/* Hero two-column layout when image is present */
-.hero-dark__inner--with-image {
+/* Hero two-column layout when media (image or video) is present */
+.hero-dark__inner--with-media {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-xl);
@@ -201,17 +201,28 @@ html, body {
 .hero-dark__text {
   min-width: 0;
 }
-.hero-dark__image {
+.hero-dark__media {
   display: flex;
   justify-content: center;
   align-items: center;
 }
-.hero-dark__image img {
+.hero-dark__media img {
   width: 100%;
   max-width: 480px;
   height: auto;
   border-radius: var(--radius-md);
   object-fit: cover;
+}
+.hero-dark__media iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: none;
+  border-radius: var(--radius-md);
+}
+.hero-dark__media video {
+  width: 100%;
+  max-width: 480px;
+  border-radius: var(--radius-md);
 }
 
 /* Reassurance band sits below the two-column grid */
@@ -223,13 +234,14 @@ html, body {
 }
 
 @media (max-width: 940px) {
-  .hero-dark__inner--with-image {
+  .hero-dark__inner--with-media {
     grid-template-columns: 1fr;
   }
-  .hero-dark__image {
+  .hero-dark__media {
     order: -1;
   }
-  .hero-dark__image img {
+  .hero-dark__media img,
+  .hero-dark__media video {
     max-width: 100%;
   }
 }

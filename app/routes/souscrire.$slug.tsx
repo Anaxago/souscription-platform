@@ -17,6 +17,7 @@ interface MarketingProduct {
   shortDescription: string | null;
   description: string | null;
   imageUrl: string | null;
+  videoUrl: string | null;
   keyAdvantages: string[];
   keyDisadvantages: string[];
   investmentSectors: string[];
@@ -102,17 +103,49 @@ function formatAmount(cents: number): string {
 }
 
 /**
- * Convert a Google Drive sharing URL to a direct image URL.
- * Input:  https://drive.google.com/file/d/FILE_ID/view?usp=sharing
- * Output: https://drive.google.com/uc?export=view&id=FILE_ID
+ * Convert a Google Drive sharing URL to a direct image thumbnail URL.
+ * The /thumbnail endpoint works reliably (unlike uc?export which is blocked).
  * Non-Drive URLs are returned as-is.
  */
 function toDirectImageUrl(url: string): string {
   const match = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
   if (match) {
-    return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+    return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1000`;
   }
   return url;
+}
+
+/**
+ * Extract an embeddable video URL from various sources.
+ * Supports: YouTube (watch/short/embed), Google Drive, or direct URLs.
+ * Returns null if the URL cannot be embedded.
+ */
+function toEmbedVideoUrl(url: string): string | null {
+  // YouTube: youtube.com/watch?v=ID, youtu.be/ID, youtube.com/embed/ID
+  const ytWatch = url.match(/youtube\.com\/watch\?v=([^&]+)/);
+  if (ytWatch) return `https://www.youtube.com/embed/${ytWatch[1]}`;
+
+  const ytShort = url.match(/youtu\.be\/([^?]+)/);
+  if (ytShort) return `https://www.youtube.com/embed/${ytShort[1]}`;
+
+  const ytEmbed = url.match(/youtube\.com\/embed\/([^?]+)/);
+  if (ytEmbed) return url;
+
+  // Google Drive video: drive.google.com/file/d/ID/...
+  const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+  if (driveMatch) return `https://drive.google.com/file/d/${driveMatch[1]}/preview`;
+
+  // Direct video URL (mp4, webm, etc.)
+  if (/\.(mp4|webm|ogg)(\?|$)/i.test(url)) return url;
+
+  return null;
+}
+
+/**
+ * Check if a video URL points to a direct file (mp4/webm/ogg) vs an iframe embed.
+ */
+function isDirectVideoUrl(url: string): boolean {
+  return /\.(mp4|webm|ogg)(\?|$)/i.test(url);
 }
 
 /**
@@ -183,6 +216,8 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
       : null;
 
   const heroImage = product.imageUrl ? toDirectImageUrl(product.imageUrl) : null;
+  const heroVideo = product.videoUrl ? toEmbedVideoUrl(product.videoUrl) : null;
+  const hasHeroMedia = heroVideo != null || heroImage != null;
 
   // Split product name on " - " for multi-line H1
   const nameParts = product.name.split(/\s*-\s*/);
@@ -206,7 +241,7 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
 
       {/* ━━ HERO DARK ━━ */}
       <section className="hero-dark">
-        <div className={`hero-dark__inner${heroImage ? " hero-dark__inner--with-image" : ""}`}>
+        <div className={`hero-dark__inner${hasHeroMedia ? " hero-dark__inner--with-media" : ""}`}>
           <div className="hero-dark__text">
             <span className={`badge ${status.className}`}>{status.label}</span>
 
@@ -239,11 +274,27 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
             )}
           </div>
 
-          {heroImage && (
-            <div className="hero-dark__image">
+          {/* Video takes priority over image */}
+          {heroVideo ? (
+            <div className="hero-dark__media">
+              {isDirectVideoUrl(heroVideo) ? (
+                <video controls preload="metadata">
+                  <source src={heroVideo} />
+                </video>
+              ) : (
+                <iframe
+                  src={heroVideo}
+                  title={product.name}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              )}
+            </div>
+          ) : heroImage ? (
+            <div className="hero-dark__media">
               <img src={heroImage} alt={product.name} />
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* Reassurance band — value/label pairs */}
