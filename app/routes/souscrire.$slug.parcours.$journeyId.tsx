@@ -5,6 +5,7 @@ import { api } from "~/lib/api.server";
 import UserVerificationStep from "~/components/steps/user-verification-step";
 import InvestorProfileStep from "~/components/steps/investor-profile-step";
 import ProductQuestionsStep from "~/components/steps/product-questions-step";
+import ProductSelectionStep from "~/components/steps/product-selection-step";
 
 /* ──────────────────────────────────────────────
    Types
@@ -133,7 +134,25 @@ export async function loader({ params }: Route.LoaderArgs) {
     personKernelId = investor.personKernelId;
   }
 
-  return { journey, slug, personKernelId };
+  // Fetch marketing product for product selection step
+  let marketingProduct: {
+    name: string;
+    minimumInvestmentInCents: number | null;
+    minimumInvestmentCurrency: string;
+    financialInstrumentId: string | null;
+  } | null = null;
+  const productRes = await api(`/marketing-products/${journey.marketingProductId}`);
+  if (productRes.ok) {
+    const p = (await productRes.json()) as {
+      name: string;
+      minimumInvestmentInCents: number | null;
+      minimumInvestmentCurrency: string;
+      financialInstrumentId: string | null;
+    };
+    marketingProduct = p;
+  }
+
+  return { journey, slug, personKernelId, marketingProduct };
 }
 
 export function meta({ data }: Route.MetaArgs) {
@@ -148,7 +167,7 @@ export function meta({ data }: Route.MetaArgs) {
    ────────────────────────────────────────────── */
 
 export default function ParcoursSouscription({ loaderData }: Route.ComponentProps) {
-  const { journey, slug, personKernelId } = loaderData;
+  const { journey, slug, personKernelId, marketingProduct } = loaderData;
   const revalidator = useRevalidator();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -420,14 +439,14 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
                       disabled={isLoading}
                       onClick={() => {
                         // Steps with dedicated UI open the step panel
-                        if (step.stepType === "USER_VERIFICATION" || step.stepType === "INVESTOR_PROFILE" || step.stepType === "PRODUCT_QUESTIONS") {
+                        if (["USER_VERIFICATION", "INVESTOR_PROFILE", "PRODUCT_QUESTIONS", "PRODUCT_SELECTION"].includes(step.stepType)) {
                           setActiveStepId(step.id);
                         } else {
                           handleStepAction(step);
                         }
                       }}
                     >
-                      {isLoading ? "..." : (step.stepType === "USER_VERIFICATION" || step.stepType === "INVESTOR_PROFILE" || step.stepType === "PRODUCT_QUESTIONS") ? "Commencer" : "Valider"}
+                      {isLoading ? "..." : ["USER_VERIFICATION", "INVESTOR_PROFILE", "PRODUCT_QUESTIONS", "PRODUCT_SELECTION"].includes(step.stepType) ? "Commencer" : "Valider"}
                     </button>
                   )}
                 </div>
@@ -467,6 +486,24 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
                     journeyId={journey.id}
                     stepId={step.id}
                     investorId={journey.investorId}
+                    actionUrl={actionUrl}
+                    onComplete={onStepComplete}
+                  />
+                </div>
+              );
+            }
+
+            if (step.stepType === "PRODUCT_SELECTION" && marketingProduct) {
+              return (
+                <div style={{ marginTop: "var(--space-lg)" }}>
+                  <ProductSelectionStep
+                    journeyId={journey.id}
+                    stepId={step.id}
+                    minimumInvestmentInCents={marketingProduct.minimumInvestmentInCents}
+                    minimumInvestmentCurrency={marketingProduct.minimumInvestmentCurrency}
+                    productName={marketingProduct.name}
+                    financialInstrumentId={marketingProduct.financialInstrumentId}
+                    existingLines={(journey.basket?.lines ?? []) as unknown as { lineType: string; financialInstrumentId: string | null; requestedAmount: number | null; requestedSecuritiesCount: number | null }[]}
                     actionUrl={actionUrl}
                     onComplete={onStepComplete}
                   />

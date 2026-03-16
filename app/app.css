@@ -961,6 +961,26 @@ html, body {
 }
 
 /* ──────────────────────────────────────────────
+   DS4 — Amount preset buttons
+   ────────────────────────────────────────────── */
+.amount-preset {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--clr-obsidian);
+  background: var(--clr-ecru-bg);
+  border: 1px solid var(--clr-stroke-dark);
+  border-radius: var(--radius-md);
+  padding: 10px 8px;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  text-align: center;
+}
+.amount-preset:hover {
+  border-color: var(--clr-cashmere);
+}
+
+/* ──────────────────────────────────────────────
    DS4 — Choice card (radio / checkbox)
    ────────────────────────────────────────────── */
 .choice-card {

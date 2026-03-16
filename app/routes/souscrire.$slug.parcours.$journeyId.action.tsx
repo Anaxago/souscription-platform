@@ -11,7 +11,8 @@ type ActionPayload =
   | { type: "complete-verification"; journeyId: string; stepId: string }
   | { type: "update-investor-profile"; investorId: string; riskTolerance: string; horizon: string; knowledgeLevel: string }
   | { type: "add-source-of-wealth"; investorId: string; origin: string }
-  | { type: "answer-product-questions"; journeyId: string; answers: { questionId: string; questionLabel: string; answerId: string; snapshotted: boolean }[] };
+  | { type: "answer-product-questions"; journeyId: string; answers: { questionId: string; questionLabel: string; answerId: string; snapshotted: boolean }[] }
+  | { type: "add-basket-line"; journeyId: string; lineType: string; financialInstrumentId: string | null; requestedAmount: number };
 
 function errorResponse(message: string, status: number) {
   return Response.json({ error: message }, { status });
@@ -153,6 +154,26 @@ export async function action({ request }: Route.ActionArgs) {
         return errorResponse((err as Record<string, string>).message ?? "Erreur complétion étape", completeRes.status);
       }
       return Response.json(await completeRes.json());
+    }
+
+    /* ── Add basket line ── */
+    case "add-basket-line": {
+      const lineBody: Record<string, unknown> = {
+        lineType: body.lineType,
+        requestedAmount: body.requestedAmount,
+      };
+      if (body.financialInstrumentId) {
+        lineBody.financialInstrumentId = body.financialInstrumentId;
+      }
+      const res = await api(
+        `/subscription-journeys/${body.journeyId}/basket/lines`,
+        { method: "POST", body: JSON.stringify(lineBody) },
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return errorResponse((err as Record<string, string>).message ?? "Erreur ajout panier", res.status);
+      }
+      return Response.json(await res.json());
     }
 
     /* ── Answer product questions ── */
