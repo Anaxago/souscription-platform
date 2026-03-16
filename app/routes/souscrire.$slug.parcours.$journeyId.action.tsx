@@ -8,7 +8,9 @@ type ActionPayload =
   | { type: "initiate-verification"; personId: string; investorId: string }
   | { type: "request-upload-url"; verificationId: string; fileName: string; contentType: string }
   | { type: "register-document"; verificationId: string; docType: string; storageRef: string; investorId: string }
-  | { type: "complete-verification"; journeyId: string; stepId: string };
+  | { type: "complete-verification"; journeyId: string; stepId: string }
+  | { type: "update-investor-profile"; investorId: string; riskTolerance: string; horizon: string; knowledgeLevel: string }
+  | { type: "add-source-of-wealth"; investorId: string; origin: string };
 
 function errorResponse(message: string, status: number) {
   return Response.json({ error: message }, { status });
@@ -150,6 +152,43 @@ export async function action({ request }: Route.ActionArgs) {
         return errorResponse((err as Record<string, string>).message ?? "Erreur complétion étape", completeRes.status);
       }
       return Response.json(await completeRes.json());
+    }
+
+    /* ── Update investor profile ── */
+    case "update-investor-profile": {
+      const res = await api(`/individual-investors/${body.investorId}/profile`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          riskTolerance: body.riskTolerance,
+          horizon: body.horizon,
+          knowledgeLevel: body.knowledgeLevel,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return errorResponse((err as Record<string, string>).message ?? "Erreur mise à jour profil", res.status);
+      }
+      return Response.json(await res.json());
+    }
+
+    /* ── Add source of wealth ── */
+    case "add-source-of-wealth": {
+      const res = await api(`/individual-investors/${body.investorId}/sources-of-wealth`, {
+        method: "POST",
+        body: JSON.stringify({
+          origin: body.origin,
+          estimatedAmountCurrency: "EUR",
+        }),
+      });
+      if (!res.ok) {
+        // Ignore duplicate errors (409)
+        if (res.status === 409) {
+          return Response.json({ ok: true });
+        }
+        const err = await res.json().catch(() => ({}));
+        return errorResponse((err as Record<string, string>).message ?? "Erreur source de patrimoine", res.status);
+      }
+      return Response.json(await res.json());
     }
 
     default:

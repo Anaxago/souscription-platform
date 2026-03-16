@@ -3,6 +3,7 @@ import { data, useRevalidator } from "react-router";
 import type { Route } from "./+types/souscrire.$slug.parcours.$journeyId";
 import { api } from "~/lib/api.server";
 import UserVerificationStep from "~/components/steps/user-verification-step";
+import InvestorProfileStep from "~/components/steps/investor-profile-step";
 
 /* ──────────────────────────────────────────────
    Types
@@ -408,14 +409,14 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
                       disabled={isLoading}
                       onClick={() => {
                         // Steps with dedicated UI open the step panel
-                        if (step.stepType === "USER_VERIFICATION") {
+                        if (step.stepType === "USER_VERIFICATION" || step.stepType === "INVESTOR_PROFILE") {
                           setActiveStepId(step.id);
                         } else {
                           handleStepAction(step);
                         }
                       }}
                     >
-                      {isLoading ? "..." : step.stepType === "USER_VERIFICATION" ? "Commencer" : "Valider"}
+                      {isLoading ? "..." : (step.stepType === "USER_VERIFICATION" || step.stepType === "INVESTOR_PROFILE") ? "Commencer" : "Valider"}
                     </button>
                   )}
                 </div>
@@ -428,6 +429,11 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
             const step = applicableSteps.find((s) => s.id === activeStepId);
             if (!step) return null;
 
+            const onStepComplete = () => {
+              setActiveStepId(null);
+              revalidator.revalidate();
+            };
+
             if (step.stepType === "USER_VERIFICATION" && personKernelId) {
               return (
                 <div style={{ marginTop: "var(--space-lg)" }}>
@@ -437,10 +443,21 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
                     investorId={journey.investorId}
                     personKernelId={personKernelId}
                     actionUrl={actionUrl}
-                    onComplete={() => {
-                      setActiveStepId(null);
-                      revalidator.revalidate();
-                    }}
+                    onComplete={onStepComplete}
+                  />
+                </div>
+              );
+            }
+
+            if (step.stepType === "INVESTOR_PROFILE") {
+              return (
+                <div style={{ marginTop: "var(--space-lg)" }}>
+                  <InvestorProfileStep
+                    journeyId={journey.id}
+                    stepId={step.id}
+                    investorId={journey.investorId}
+                    actionUrl={actionUrl}
+                    onComplete={onStepComplete}
                   />
                 </div>
               );

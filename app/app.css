@@ -961,6 +961,97 @@ html, body {
 }
 
 /* ──────────────────────────────────────────────
+   DS4 — Choice card (radio / checkbox)
+   ────────────────────────────────────────────── */
+.choice-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px var(--space-sm);
+  background: var(--clr-ecru-bg);
+  border: 1px solid var(--clr-stroke-dark);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+.choice-card:hover {
+  border-color: var(--clr-cashmere);
+}
+.choice-card__radio {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--clr-stroke-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.choice-card__radio-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--clr-primary);
+}
+.choice-card__check {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--clr-stroke-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.choice-card__label {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--clr-obsidian);
+  display: block;
+}
+.choice-card__desc {
+  font-size: 12px;
+  color: var(--clr-cashmere);
+  display: block;
+  margin-top: 2px;
+}
+
+/* ──────────────────────────────────────────────
+   DS4 — Confirm summary
+   ────────────────────────────────────────────── */
+.confirm-summary {
+  background: var(--clr-ecru-bg);
+  border: 1px solid var(--clr-stroke-dark);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.confirm-summary__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 12px var(--space-md);
+  border-bottom: 1px solid var(--clr-stroke-dark);
+}
+.confirm-summary__row:last-child {
+  border-bottom: none;
+}
+.confirm-summary__label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--clr-cashmere);
+}
+.confirm-summary__value {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--clr-obsidian);
+  text-align: right;
+}
+
+/* ──────────────────────────────────────────────
    DS4 — Form elements
    ────────────────────────────────────────────── */
 .form-label {
