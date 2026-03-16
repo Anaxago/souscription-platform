@@ -4,6 +4,7 @@ import type { Route } from "./+types/souscrire.$slug.parcours.$journeyId";
 import { api } from "~/lib/api.server";
 import UserVerificationStep from "~/components/steps/user-verification-step";
 import InvestorProfileStep from "~/components/steps/investor-profile-step";
+import ProductQuestionsStep from "~/components/steps/product-questions-step";
 
 /* ──────────────────────────────────────────────
    Types
@@ -28,6 +29,16 @@ interface SubscriptionJourney {
   status: string;
   currentStepId: string | null;
   steps: JourneyStep[];
+  basket: {
+    lines: unknown[];
+    envelopeTarget: unknown | null;
+    productQuestionAnswers: {
+      questionId: string;
+      questionLabel: string;
+      answerId: string;
+      snapshotted: boolean;
+    }[];
+  };
   startedAt: string;
   completedAt: string | null;
 }
@@ -409,14 +420,14 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
                       disabled={isLoading}
                       onClick={() => {
                         // Steps with dedicated UI open the step panel
-                        if (step.stepType === "USER_VERIFICATION" || step.stepType === "INVESTOR_PROFILE") {
+                        if (step.stepType === "USER_VERIFICATION" || step.stepType === "INVESTOR_PROFILE" || step.stepType === "PRODUCT_QUESTIONS") {
                           setActiveStepId(step.id);
                         } else {
                           handleStepAction(step);
                         }
                       }}
                     >
-                      {isLoading ? "..." : (step.stepType === "USER_VERIFICATION" || step.stepType === "INVESTOR_PROFILE") ? "Commencer" : "Valider"}
+                      {isLoading ? "..." : (step.stepType === "USER_VERIFICATION" || step.stepType === "INVESTOR_PROFILE" || step.stepType === "PRODUCT_QUESTIONS") ? "Commencer" : "Valider"}
                     </button>
                   )}
                 </div>
@@ -456,6 +467,21 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
                     journeyId={journey.id}
                     stepId={step.id}
                     investorId={journey.investorId}
+                    actionUrl={actionUrl}
+                    onComplete={onStepComplete}
+                  />
+                </div>
+              );
+            }
+
+            if (step.stepType === "PRODUCT_QUESTIONS") {
+              return (
+                <div style={{ marginTop: "var(--space-lg)" }}>
+                  <ProductQuestionsStep
+                    journeyId={journey.id}
+                    stepId={step.id}
+                    config={step.config as { questions?: { questionId: string; questionLabel: string; choices: { answerId: string; label: string }[] }[] } | null}
+                    existingAnswers={journey.basket?.productQuestionAnswers ?? []}
                     actionUrl={actionUrl}
                     onComplete={onStepComplete}
                   />

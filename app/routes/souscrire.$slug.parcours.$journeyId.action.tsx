@@ -10,7 +10,8 @@ type ActionPayload =
   | { type: "register-document"; verificationId: string; docType: string; storageRef: string; investorId: string }
   | { type: "complete-verification"; journeyId: string; stepId: string }
   | { type: "update-investor-profile"; investorId: string; riskTolerance: string; horizon: string; knowledgeLevel: string }
-  | { type: "add-source-of-wealth"; investorId: string; origin: string };
+  | { type: "add-source-of-wealth"; investorId: string; origin: string }
+  | { type: "answer-product-questions"; journeyId: string; answers: { questionId: string; questionLabel: string; answerId: string; snapshotted: boolean }[] };
 
 function errorResponse(message: string, status: number) {
   return Response.json({ error: message }, { status });
@@ -152,6 +153,22 @@ export async function action({ request }: Route.ActionArgs) {
         return errorResponse((err as Record<string, string>).message ?? "Erreur complétion étape", completeRes.status);
       }
       return Response.json(await completeRes.json());
+    }
+
+    /* ── Answer product questions ── */
+    case "answer-product-questions": {
+      const res = await api(
+        `/subscription-journeys/${body.journeyId}/basket/product-questions`,
+        {
+          method: "POST",
+          body: JSON.stringify({ answers: body.answers }),
+        },
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return errorResponse((err as Record<string, string>).message ?? "Erreur questions produit", res.status);
+      }
+      return Response.json(await res.json());
     }
 
     /* ── Update investor profile ── */
