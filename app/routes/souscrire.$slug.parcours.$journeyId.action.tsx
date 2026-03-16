@@ -12,7 +12,12 @@ type ActionPayload =
   | { type: "update-investor-profile"; investorId: string; riskTolerance: string; horizon: string; knowledgeLevel: string }
   | { type: "add-source-of-wealth"; investorId: string; origin: string }
   | { type: "answer-product-questions"; journeyId: string; answers: { questionId: string; questionLabel: string; answerId: string; snapshotted: boolean }[] }
-  | { type: "add-basket-line"; journeyId: string; lineType: string; financialInstrumentId: string | null; requestedAmount: number };
+  | { type: "add-basket-line"; journeyId: string; lineType: string; financialInstrumentId: string | null; requestedAmount: number }
+  | { type: "set-envelope-target"; journeyId: string; targetType: string; envelopeType: string; existingEnvelopeRef?: string }
+  | { type: "update-basket-dismemberment"; journeyId: string; dismembermentType: string }
+  | { type: "evaluate-adequacy"; journeyId: string; stepId: string; investorType: string }
+  | { type: "override-adequacy"; checkId: string; journeyId: string; stepId: string }
+  | { type: "upload-journey-document"; journeyId: string; stepId: string; documentType: string; documentId: string; fileName: string };
 
 function errorResponse(message: string, status: number) {
   return Response.json({ error: message }, { status });
@@ -172,6 +177,98 @@ export async function action({ request }: Route.ActionArgs) {
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         return errorResponse((err as Record<string, string>).message ?? "Erreur ajout panier", res.status);
+      }
+      return Response.json(await res.json());
+    }
+
+    /* ── Set envelope target ── */
+    case "set-envelope-target": {
+      const envelopeBody: Record<string, unknown> = {
+        targetType: body.targetType,
+        envelopeType: body.envelopeType,
+      };
+      if (body.existingEnvelopeRef) {
+        envelopeBody.existingEnvelopeRef = body.existingEnvelopeRef;
+      }
+      const res = await api(
+        `/subscription-journeys/${body.journeyId}/basket/envelope-target`,
+        { method: "PUT", body: JSON.stringify(envelopeBody) },
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return errorResponse((err as Record<string, string>).message ?? "Erreur enveloppe", res.status);
+      }
+      return Response.json(await res.json());
+    }
+
+    /* ── Update basket line dismemberment ── */
+    case "update-basket-dismemberment": {
+      // Update the first basket line with dismemberment type
+      const res = await api(
+        `/subscription-journeys/${body.journeyId}/basket/lines/0`,
+        { method: "PATCH", body: JSON.stringify({ dismembermentType: body.dismembermentType }) },
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return errorResponse((err as Record<string, string>).message ?? "Erreur démembrement", res.status);
+      }
+      return Response.json(await res.json());
+    }
+
+    /* ── Evaluate adequacy ── */
+    case "evaluate-adequacy": {
+      const res = await api(
+        `/subscription-journeys/${body.journeyId}/steps/${body.stepId}/evaluate-adequacy`,
+        { method: "POST", body: JSON.stringify({ investorType: body.investorType }) },
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return errorResponse((err as Record<string, string>).message ?? "Erreur adéquation", res.status);
+      }
+      return Response.json(await res.json());
+    }
+
+    /* ── Override adequacy ── */
+    case "override-adequacy": {
+      const overrideRes = await api(`/adequacy-checks/${body.checkId}/override`, {
+        method: "POST",
+        body: JSON.stringify({
+          overrideReason: "L'investisseur confirme avoir compris les risques",
+          consentRecordedAt: new Date().toISOString(),
+        }),
+      });
+      if (!overrideRes.ok) {
+        const err = await overrideRes.json().catch(() => ({}));
+        return errorResponse((err as Record<string, string>).message ?? "Erreur override", overrideRes.status);
+      }
+      // Complete the step after override
+      const completeRes = await api(
+        `/subscription-journeys/${body.journeyId}/steps/${body.stepId}/complete`,
+        { method: "POST" },
+      );
+      if (!completeRes.ok) {
+        const err = await completeRes.json().catch(() => ({}));
+        return errorResponse((err as Record<string, string>).message ?? "Erreur complétion", completeRes.status);
+      }
+      return Response.json(await completeRes.json());
+    }
+
+    /* ── Upload journey document ── */
+    case "upload-journey-document": {
+      const res = await api(
+        `/subscription-journeys/${body.journeyId}/steps/${body.stepId}/documents`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            documentType: body.documentType,
+            documentId: body.documentId,
+            fileName: body.fileName,
+          }),
+        },
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return errorResponse((err as Record<string, string>).message ?? "Erreur upload document", res.status);
       }
       return Response.json(await res.json());
     }

@@ -6,6 +6,10 @@ import UserVerificationStep from "~/components/steps/user-verification-step";
 import InvestorProfileStep from "~/components/steps/investor-profile-step";
 import ProductQuestionsStep from "~/components/steps/product-questions-step";
 import ProductSelectionStep from "~/components/steps/product-selection-step";
+import EnvelopeSelectionStep from "~/components/steps/envelope-selection-step";
+import DismembermentSelectionStep from "~/components/steps/dismemberment-selection-step";
+import AdequacyCheckStep from "~/components/steps/adequacy-check-step";
+import DocumentUploadStep from "~/components/steps/document-upload-step";
 
 /* ──────────────────────────────────────────────
    Types
@@ -20,6 +24,7 @@ interface JourneyStep {
   isApplicable: boolean;
   completedAt: string | null;
   config: Record<string, unknown> | null;
+  state: Record<string, unknown> | null;
 }
 
 interface SubscriptionJourney {
@@ -439,14 +444,14 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
                       disabled={isLoading}
                       onClick={() => {
                         // Steps with dedicated UI open the step panel
-                        if (["USER_VERIFICATION", "INVESTOR_PROFILE", "PRODUCT_QUESTIONS", "PRODUCT_SELECTION"].includes(step.stepType)) {
+                        if (["USER_VERIFICATION", "INVESTOR_PROFILE", "PRODUCT_QUESTIONS", "PRODUCT_SELECTION", "ENVELOPE_SELECTION", "DISMEMBERMENT_SELECTION", "ADEQUACY_CHECK", "DOCUMENT_UPLOAD"].includes(step.stepType)) {
                           setActiveStepId(step.id);
                         } else {
                           handleStepAction(step);
                         }
                       }}
                     >
-                      {isLoading ? "..." : ["USER_VERIFICATION", "INVESTOR_PROFILE", "PRODUCT_QUESTIONS", "PRODUCT_SELECTION"].includes(step.stepType) ? "Commencer" : "Valider"}
+                      {isLoading ? "..." : "Commencer"}
                     </button>
                   )}
                 </div>
@@ -519,6 +524,62 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
                     stepId={step.id}
                     config={step.config as { questions?: { questionId: string; questionLabel: string; choices: { answerId: string; label: string }[] }[] } | null}
                     existingAnswers={journey.basket?.productQuestionAnswers ?? []}
+                    actionUrl={actionUrl}
+                    onComplete={onStepComplete}
+                  />
+                </div>
+              );
+            }
+
+            if (step.stepType === "ENVELOPE_SELECTION") {
+              return (
+                <div style={{ marginTop: "var(--space-lg)" }}>
+                  <EnvelopeSelectionStep
+                    journeyId={journey.id}
+                    stepId={step.id}
+                    actionUrl={actionUrl}
+                    onComplete={onStepComplete}
+                  />
+                </div>
+              );
+            }
+
+            if (step.stepType === "DISMEMBERMENT_SELECTION") {
+              return (
+                <div style={{ marginTop: "var(--space-lg)" }}>
+                  <DismembermentSelectionStep
+                    journeyId={journey.id}
+                    stepId={step.id}
+                    actionUrl={actionUrl}
+                    onComplete={onStepComplete}
+                  />
+                </div>
+              );
+            }
+
+            if (step.stepType === "ADEQUACY_CHECK") {
+              return (
+                <div style={{ marginTop: "var(--space-lg)" }}>
+                  <AdequacyCheckStep
+                    journeyId={journey.id}
+                    stepId={step.id}
+                    investorType={journey.investorType}
+                    state={step.state as { lastCheckId: string | null; result: "ADEQUATE" | "NEUTRAL" | "INADEQUATE" | "INCOMPLETE_PROFILE" | "OVERRIDDEN" | null; overridden: boolean } | null}
+                    actionUrl={actionUrl}
+                    onComplete={onStepComplete}
+                  />
+                </div>
+              );
+            }
+
+            if (step.stepType === "DOCUMENT_UPLOAD") {
+              return (
+                <div style={{ marginTop: "var(--space-lg)" }}>
+                  <DocumentUploadStep
+                    journeyId={journey.id}
+                    stepId={step.id}
+                    config={step.config as { requiredDocumentTypes: string[] | null } | null}
+                    state={step.state as { uploadedDocuments: { documentId: string; documentType: string; fileName: string; uploadedAt: string }[] } | null}
                     actionUrl={actionUrl}
                     onComplete={onStepComplete}
                   />
