@@ -631,7 +631,7 @@ function DocumentsList({
   }
 
   return (
-    <div className="documents-list" data-reveal>
+    <div className="documents-list">
       {documents.map((doc) => (
         <div key={doc.id} className="document-card">
           <div className="document-card__icon">
