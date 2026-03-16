@@ -121,9 +121,14 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   if (!journeyRes.ok) {
     const err = await journeyRes.json().catch(() => ({}));
+    const rawMessage = (err as Record<string, string>).message ?? "";
+    // Don't expose internal server errors to the user
+    const userMessage = rawMessage.includes("Cannot read") || rawMessage.includes("Internal")
+      ? "Une erreur technique est survenue. Veuillez réessayer dans quelques instants."
+      : rawMessage || "Erreur lors du démarrage du parcours.";
     return {
       success: false as const,
-      error: (err as Record<string, string>).message ?? "Erreur lors du démarrage du parcours.",
+      error: userMessage,
     };
   }
 
