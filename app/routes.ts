@@ -4,4 +4,5 @@ export default [
   index("routes/home.tsx"),
   route("persons/new", "routes/persons.new.tsx"),
   route("products/new", "routes/products.new.tsx"),
+  route("souscrire/:slug", "routes/souscrire.$slug.tsx"),
 ] satisfies RouteConfig;
