@@ -176,7 +176,6 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
   const revalidator = useRevalidator();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [activeStepId, setActiveStepId] = useState<string | null>(null);
   const actionUrl = `/souscrire/${slug}/parcours/${journey.id}/action`;
 
   const applicableSteps = journey.steps
@@ -231,6 +230,57 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
     }
   }
 
+  const onStepComplete = () => {
+    revalidator.revalidate();
+  };
+
+  // Auto-render the current step's panel
+  const activeStep = currentStep;
+
+  function renderStepPanel(step: JourneyStep) {
+    if (step.stepType === "USER_VERIFICATION" && personKernelId) {
+      return <UserVerificationStep journeyId={journey.id} stepId={step.id} investorId={journey.investorId} personKernelId={personKernelId} actionUrl={actionUrl} onComplete={onStepComplete} />;
+    }
+    if (step.stepType === "INVESTOR_PROFILE" && personKernelId) {
+      return <InvestorProfileStep journeyId={journey.id} stepId={step.id} investorId={journey.investorId} personKernelId={personKernelId} actionUrl={actionUrl} onComplete={onStepComplete} />;
+    }
+    if (step.stepType === "PRODUCT_SELECTION" && marketingProduct) {
+      return <ProductSelectionStep journeyId={journey.id} stepId={step.id} minimumInvestmentInCents={marketingProduct.minimumInvestmentInCents} minimumInvestmentCurrency={marketingProduct.minimumInvestmentCurrency} productName={marketingProduct.name} financialInstrumentId={marketingProduct.financialInstrumentId} existingLines={(journey.basket?.lines ?? []) as unknown as { lineType: string; financialInstrumentId: string | null; requestedAmount: number | null; requestedSecuritiesCount: number | null }[]} actionUrl={actionUrl} onComplete={onStepComplete} />;
+    }
+    if (step.stepType === "PRODUCT_QUESTIONS") {
+      return <ProductQuestionsStep journeyId={journey.id} stepId={step.id} config={step.config as { questions?: { questionId: string; questionLabel: string; choices: { answerId: string; label: string }[] }[] } | null} existingAnswers={journey.basket?.productQuestionAnswers ?? []} actionUrl={actionUrl} onComplete={onStepComplete} />;
+    }
+    if (step.stepType === "ENVELOPE_SELECTION") {
+      return <EnvelopeSelectionStep journeyId={journey.id} stepId={step.id} actionUrl={actionUrl} onComplete={onStepComplete} />;
+    }
+    if (step.stepType === "DISMEMBERMENT_SELECTION") {
+      return <DismembermentSelectionStep journeyId={journey.id} stepId={step.id} actionUrl={actionUrl} onComplete={onStepComplete} />;
+    }
+    if (step.stepType === "ADEQUACY_CHECK") {
+      return <AdequacyCheckStep journeyId={journey.id} stepId={step.id} investorType={journey.investorType} state={step.state as { lastCheckId: string | null; result: "ADEQUATE" | "NEUTRAL" | "INADEQUATE" | "INCOMPLETE_PROFILE" | "OVERRIDDEN" | null; overridden: boolean } | null} actionUrl={actionUrl} onComplete={onStepComplete} />;
+    }
+    if (step.stepType === "DOCUMENT_UPLOAD") {
+      return <DocumentUploadStep journeyId={journey.id} stepId={step.id} config={step.config as { requiredDocumentTypes: string[] | null } | null} state={step.state as { uploadedDocuments: { documentId: string; documentType: string; fileName: string; uploadedAt: string }[] } | null} actionUrl={actionUrl} onComplete={onStepComplete} />;
+    }
+    // Generic fallback: simple complete button
+    return (
+      <div className="step-panel">
+        <div className="step-panel__header">
+          <div className="step-panel__icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="1.5"><circle cx="12" cy="12" r="10" /><polyline points="9 12 11 14 15 10" /></svg>
+          </div>
+          <div>
+            <h2 className="step-panel__title">{STEP_TYPE_LABELS[step.stepType] ?? step.stepType}</h2>
+            <p className="step-panel__desc">{STEP_TYPE_DESCRIPTIONS[step.stepType] ?? "Complétez cette étape pour continuer."}</p>
+          </div>
+        </div>
+        <button className="btn-primary" style={{ width: "100%", justifyContent: "center" }} disabled={actionLoading === step.id} onClick={() => handleStepAction(step)}>
+          {actionLoading === step.id ? "..." : "Valider cette étape"}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="ds4-body">
       <nav className="nav-bar scrolled">
@@ -238,380 +288,66 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
       </nav>
 
       <main style={{ paddingTop: 100 }}>
-        <div style={{ maxWidth: 800, margin: "0 auto", padding: "var(--space-xl)" }}>
-          <a
-            href={`/souscrire/${slug}`}
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: 13,
-              fontWeight: 600,
-              color: "var(--clr-cashmere)",
-              textDecoration: "none",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              marginBottom: "var(--space-lg)",
-            }}
-          >
+        <div style={{ maxWidth: 640, margin: "0 auto", padding: "var(--space-xl)" }}>
+          {/* Header */}
+          <a href={`/souscrire/${slug}`} style={{ fontFamily: "var(--font-display)", fontSize: 13, fontWeight: 600, color: "var(--clr-cashmere)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6, marginBottom: "var(--space-md)" }}>
             ← Retour au produit
           </a>
 
-          <h1
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: "clamp(28px, 4vw, 36px)",
-              fontWeight: 300,
-              letterSpacing: "-0.02em",
-              color: "var(--clr-obsidian)",
-              marginBottom: "var(--space-xs)",
-            }}
-          >
-            Parcours de souscription
-          </h1>
-
-          {/* Progress bar */}
-          <div style={{ marginBottom: "var(--space-xl)" }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "var(--space-xs)",
-              }}
-            >
-              <span style={{ fontSize: 13, color: "var(--clr-cashmere)" }}>
-                {completedCount} / {applicableSteps.length} étapes complétées
-              </span>
-              <span
-                style={{
-                  fontFamily: "var(--font-display)",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "var(--clr-primary)",
-                }}
-              >
-                {progress}%
-              </span>
-            </div>
-            <div
-              style={{
-                height: 6,
-                borderRadius: 3,
-                background: "var(--clr-stroke-dark)",
-                overflow: "hidden",
-              }}
-            >
-              <div
-                style={{
-                  height: "100%",
-                  width: `${progress}%`,
-                  background: "var(--clr-primary)",
-                  borderRadius: 3,
-                  transition: "width 0.3s ease",
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Error message */}
-          {actionError && (
-            <div className="form-error" style={{ marginBottom: "var(--space-md)" }}>
-              {actionError}
-            </div>
-          )}
-
-          {/* Steps list */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+          {/* Compact stepper — horizontal dots */}
+          <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: "var(--space-xs)" }}>
             {applicableSteps.map((step, i) => {
               const isCurrent = currentStep?.id === step.id;
-              const statusInfo =
-                STEP_STATUS_LABELS[step.stepStatus] ?? STEP_STATUS_LABELS.NOT_STARTED;
-              const isLoading = actionLoading === step.id;
-              const canAct = isCurrent && step.stepStatus === "IN_PROGRESS";
-              const description = STEP_TYPE_DESCRIPTIONS[step.stepType];
-
               return (
-                <div
-                  key={step.id}
-                  style={{
+                <div key={step.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <div style={{
+                    width: isCurrent ? 28 : 20,
+                    height: isCurrent ? 28 : 20,
+                    borderRadius: "50%",
+                    background: step.stepStatus === "COMPLETED" ? "var(--clr-primary)" : isCurrent ? "var(--clr-primary-light)" : "var(--clr-stroke-dark)",
+                    border: isCurrent ? "2px solid var(--clr-primary)" : "none",
                     display: "flex",
-                    alignItems: "flex-start",
-                    gap: "var(--space-sm)",
-                    padding: "var(--space-md) 0",
-                    borderBottom:
-                      i < applicableSteps.length - 1
-                        ? "1px solid var(--clr-stroke-dark)"
-                        : "none",
-                  }}
-                >
-                  {/* Step number / check */}
-                  <div
-                    style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: "50%",
-                      background:
-                        step.stepStatus === "COMPLETED"
-                          ? "var(--clr-primary)"
-                          : isCurrent
-                            ? "var(--clr-primary-light)"
-                            : "var(--clr-stroke-dark)",
-                      border: isCurrent ? "2px solid var(--clr-primary)" : "none",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                    }}
-                  >
+                    alignItems: "center",
+                    justifyContent: "center",
+                    transition: "all 0.2s ease",
+                  }}>
                     {step.stepStatus === "COMPLETED" ? (
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="white"
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
                     ) : (
-                      <span
-                        style={{
-                          fontFamily: "var(--font-display)",
-                          fontSize: 12,
-                          fontWeight: 700,
-                          color: isCurrent ? "var(--clr-primary)" : "var(--clr-cashmere)",
-                        }}
-                      >
-                        {i + 1}
-                      </span>
+                      <span style={{ fontFamily: "var(--font-display)", fontSize: isCurrent ? 11 : 9, fontWeight: 700, color: isCurrent ? "var(--clr-primary)" : "var(--clr-cashmere)" }}>{i + 1}</span>
                     )}
                   </div>
-
-                  {/* Step info */}
-                  <div style={{ flex: 1, paddingTop: 4 }}>
-                    <div
-                      style={{
-                        fontFamily: "var(--font-display)",
-                        fontSize: 15,
-                        fontWeight: 600,
-                        color:
-                          step.stepStatus === "COMPLETED"
-                            ? "var(--clr-cashmere)"
-                            : "var(--clr-obsidian)",
-                      }}
-                    >
-                      {STEP_TYPE_LABELS[step.stepType] ?? step.stepType}
-                    </div>
-                    {description && (
-                      <div
-                        style={{
-                          fontSize: 13,
-                          color: "var(--clr-cashmere)",
-                          marginTop: 2,
-                        }}
-                      >
-                        {description}
-                      </div>
-                    )}
-                    <span
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 600,
-                        color: statusInfo.color,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.04em",
-                      }}
-                    >
-                      {statusInfo.label}
-                    </span>
-                  </div>
-
-                  {/* Action button for current step */}
-                  {canAct && (
-                    <button
-                      className="btn-primary"
-                      style={{
-                        padding: "8px 16px",
-                        fontSize: 12,
-                        flexShrink: 0,
-                        marginTop: 2,
-                        opacity: isLoading ? 0.6 : 1,
-                        cursor: isLoading ? "not-allowed" : "pointer",
-                      }}
-                      disabled={isLoading}
-                      onClick={() => {
-                        // Steps with dedicated UI open the step panel
-                        if (["USER_VERIFICATION", "INVESTOR_PROFILE", "PRODUCT_QUESTIONS", "PRODUCT_SELECTION", "ENVELOPE_SELECTION", "DISMEMBERMENT_SELECTION", "ADEQUACY_CHECK", "DOCUMENT_UPLOAD"].includes(step.stepType)) {
-                          setActiveStepId(step.id);
-                        } else {
-                          handleStepAction(step);
-                        }
-                      }}
-                    >
-                      {isLoading ? "..." : "Commencer"}
-                    </button>
+                  {i < applicableSteps.length - 1 && (
+                    <div style={{ width: 12, height: 2, background: step.stepStatus === "COMPLETED" ? "var(--clr-primary)" : "var(--clr-stroke-dark)", borderRadius: 1 }} />
                   )}
                 </div>
               );
             })}
           </div>
 
-          {/* ── Active step detail panel ── */}
-          {activeStepId && (() => {
-            const step = applicableSteps.find((s) => s.id === activeStepId);
-            if (!step) return null;
+          {/* Current step label */}
+          <div style={{ marginBottom: "var(--space-lg)" }}>
+            <span style={{ fontFamily: "var(--font-display)", fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--clr-primary)" }}>
+              Étape {applicableSteps.findIndex((s) => s.id === currentStep?.id) + 1} sur {applicableSteps.length}
+            </span>
+          </div>
 
-            const onStepComplete = () => {
-              setActiveStepId(null);
-              revalidator.revalidate();
-            };
+          {/* Error message */}
+          {actionError && (
+            <div className="form-error" style={{ marginBottom: "var(--space-md)" }}>{actionError}</div>
+          )}
 
-            if (step.stepType === "USER_VERIFICATION" && personKernelId) {
-              return (
-                <div style={{ marginTop: "var(--space-lg)" }}>
-                  <UserVerificationStep
-                    journeyId={journey.id}
-                    stepId={step.id}
-                    investorId={journey.investorId}
-                    personKernelId={personKernelId}
-                    actionUrl={actionUrl}
-                    onComplete={onStepComplete}
-                  />
-                </div>
-              );
-            }
-
-            if (step.stepType === "INVESTOR_PROFILE" && personKernelId) {
-              return (
-                <div style={{ marginTop: "var(--space-lg)" }}>
-                  <InvestorProfileStep
-                    journeyId={journey.id}
-                    stepId={step.id}
-                    investorId={journey.investorId}
-                    personKernelId={personKernelId}
-                    actionUrl={actionUrl}
-                    onComplete={onStepComplete}
-                  />
-                </div>
-              );
-            }
-
-            if (step.stepType === "PRODUCT_SELECTION" && marketingProduct) {
-              return (
-                <div style={{ marginTop: "var(--space-lg)" }}>
-                  <ProductSelectionStep
-                    journeyId={journey.id}
-                    stepId={step.id}
-                    minimumInvestmentInCents={marketingProduct.minimumInvestmentInCents}
-                    minimumInvestmentCurrency={marketingProduct.minimumInvestmentCurrency}
-                    productName={marketingProduct.name}
-                    financialInstrumentId={marketingProduct.financialInstrumentId}
-                    existingLines={(journey.basket?.lines ?? []) as unknown as { lineType: string; financialInstrumentId: string | null; requestedAmount: number | null; requestedSecuritiesCount: number | null }[]}
-                    actionUrl={actionUrl}
-                    onComplete={onStepComplete}
-                  />
-                </div>
-              );
-            }
-
-            if (step.stepType === "PRODUCT_QUESTIONS") {
-              return (
-                <div style={{ marginTop: "var(--space-lg)" }}>
-                  <ProductQuestionsStep
-                    journeyId={journey.id}
-                    stepId={step.id}
-                    config={step.config as { questions?: { questionId: string; questionLabel: string; choices: { answerId: string; label: string }[] }[] } | null}
-                    existingAnswers={journey.basket?.productQuestionAnswers ?? []}
-                    actionUrl={actionUrl}
-                    onComplete={onStepComplete}
-                  />
-                </div>
-              );
-            }
-
-            if (step.stepType === "ENVELOPE_SELECTION") {
-              return (
-                <div style={{ marginTop: "var(--space-lg)" }}>
-                  <EnvelopeSelectionStep
-                    journeyId={journey.id}
-                    stepId={step.id}
-                    actionUrl={actionUrl}
-                    onComplete={onStepComplete}
-                  />
-                </div>
-              );
-            }
-
-            if (step.stepType === "DISMEMBERMENT_SELECTION") {
-              return (
-                <div style={{ marginTop: "var(--space-lg)" }}>
-                  <DismembermentSelectionStep
-                    journeyId={journey.id}
-                    stepId={step.id}
-                    actionUrl={actionUrl}
-                    onComplete={onStepComplete}
-                  />
-                </div>
-              );
-            }
-
-            if (step.stepType === "ADEQUACY_CHECK") {
-              return (
-                <div style={{ marginTop: "var(--space-lg)" }}>
-                  <AdequacyCheckStep
-                    journeyId={journey.id}
-                    stepId={step.id}
-                    investorType={journey.investorType}
-                    state={step.state as { lastCheckId: string | null; result: "ADEQUATE" | "NEUTRAL" | "INADEQUATE" | "INCOMPLETE_PROFILE" | "OVERRIDDEN" | null; overridden: boolean } | null}
-                    actionUrl={actionUrl}
-                    onComplete={onStepComplete}
-                  />
-                </div>
-              );
-            }
-
-            if (step.stepType === "DOCUMENT_UPLOAD") {
-              return (
-                <div style={{ marginTop: "var(--space-lg)" }}>
-                  <DocumentUploadStep
-                    journeyId={journey.id}
-                    stepId={step.id}
-                    config={step.config as { requiredDocumentTypes: string[] | null } | null}
-                    state={step.state as { uploadedDocuments: { documentId: string; documentType: string; fileName: string; uploadedAt: string }[] } | null}
-                    actionUrl={actionUrl}
-                    onComplete={onStepComplete}
-                  />
-                </div>
-              );
-            }
-
-            return null;
-          })()}
+          {/* ━━ ACTIVE STEP PANEL (auto-opened) ━━ */}
+          {activeStep && activeStep.stepStatus !== "COMPLETED" && (
+            renderStepPanel(activeStep)
+          )}
 
           {/* Journey completed */}
           {journey.status === "COMPLETED" && (
-            <div
-              style={{
-                marginTop: "var(--space-lg)",
-                padding: "var(--space-md)",
-                background: "var(--clr-primary-light)",
-                borderRadius: "var(--radius-md)",
-                textAlign: "center",
-              }}
-            >
-              <p
-                style={{
-                  fontFamily: "var(--font-display)",
-                  fontSize: 15,
-                  fontWeight: 600,
-                  color: "var(--clr-primary)",
-                }}
-              >
-                Parcours de souscription terminé
-              </p>
+            <div style={{ padding: "var(--space-xl)", background: "var(--clr-primary-light)", borderRadius: "var(--radius-md)", textAlign: "center" }}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="1.5" style={{ margin: "0 auto var(--space-md)" }}><circle cx="12" cy="12" r="10" /><polyline points="9 12 11 14 15 10" /></svg>
+              <h2 style={{ fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 300, color: "var(--clr-obsidian)", marginBottom: "var(--space-xs)" }}>Parcours terminé</h2>
+              <p style={{ fontSize: 14, color: "var(--clr-cashmere)" }}>Votre souscription est en cours de traitement.</p>
             </div>
           )}
         </div>
