@@ -15,7 +15,7 @@ interface Question {
   category: string;
   wording: string;
   type: "SINGLE_CHOICE" | "MULTIPLE_CHOICE";
-  choices: { choiceKey: string; label: string }[];
+  choices: { choiceId: string; label: string }[];
 }
 
 interface GroupedCategory {
@@ -262,12 +262,12 @@ export default function InvestorProfileStep({
               <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-xs)" }}>
                 {q.choices.map((choice) => {
                   const isSelected = q.type === "MULTIPLE_CHOICE"
-                    ? ((answers[q.id] as string[]) ?? []).includes(choice.choiceKey)
-                    : answers[q.id] === choice.choiceKey;
+                    ? ((answers[q.id] as string[]) ?? []).includes(choice.choiceId)
+                    : answers[q.id] === choice.choiceId;
 
                   return (
                     <label
-                      key={choice.choiceKey}
+                      key={choice.choiceId}
                       className="choice-card"
                       style={{
                         borderColor: isSelected ? "var(--clr-primary)" : undefined,
@@ -280,8 +280,8 @@ export default function InvestorProfileStep({
                         checked={isSelected}
                         onChange={() =>
                           q.type === "MULTIPLE_CHOICE"
-                            ? handleMultipleAnswer(q.id, choice.choiceKey)
-                            : handleSingleAnswer(q.id, choice.choiceKey)
+                            ? handleMultipleAnswer(q.id, choice.choiceId)
+                            : handleSingleAnswer(q.id, choice.choiceId)
                         }
                         style={{ display: "none" }}
                       />

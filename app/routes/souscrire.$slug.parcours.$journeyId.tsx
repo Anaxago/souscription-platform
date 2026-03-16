@@ -294,42 +294,45 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
             ← Retour au produit
           </a>
 
-          {/* Compact stepper — horizontal dots */}
-          <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: "var(--space-xs)" }}>
+          {/* Step navigation */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 0, marginBottom: "var(--space-lg)", background: "var(--clr-off-white)", border: "1px solid var(--clr-stroke-dark)", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
             {applicableSteps.map((step, i) => {
               const isCurrent = currentStep?.id === step.id;
+              const isCompleted = step.stepStatus === "COMPLETED";
               return (
-                <div key={step.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <div key={step.id} style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "12px 16px",
+                  borderBottom: i < applicableSteps.length - 1 ? "1px solid var(--clr-stroke-dark)" : "none",
+                  background: isCurrent ? "var(--clr-primary-light)" : "transparent",
+                }}>
                   <div style={{
-                    width: isCurrent ? 28 : 20,
-                    height: isCurrent ? 28 : 20,
-                    borderRadius: "50%",
-                    background: step.stepStatus === "COMPLETED" ? "var(--clr-primary)" : isCurrent ? "var(--clr-primary-light)" : "var(--clr-stroke-dark)",
-                    border: isCurrent ? "2px solid var(--clr-primary)" : "none",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    transition: "all 0.2s ease",
+                    width: 24, height: 24, borderRadius: "50%",
+                    background: isCompleted ? "var(--clr-primary)" : isCurrent ? "var(--clr-primary)" : "var(--clr-stroke-dark)",
+                    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
                   }}>
-                    {step.stepStatus === "COMPLETED" ? (
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
+                    {isCompleted ? (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
                     ) : (
-                      <span style={{ fontFamily: "var(--font-display)", fontSize: isCurrent ? 11 : 9, fontWeight: 700, color: isCurrent ? "var(--clr-primary)" : "var(--clr-cashmere)" }}>{i + 1}</span>
+                      <span style={{ fontFamily: "var(--font-display)", fontSize: 11, fontWeight: 700, color: isCurrent ? "white" : "var(--clr-cashmere)" }}>{i + 1}</span>
                     )}
                   </div>
-                  {i < applicableSteps.length - 1 && (
-                    <div style={{ width: 12, height: 2, background: step.stepStatus === "COMPLETED" ? "var(--clr-primary)" : "var(--clr-stroke-dark)", borderRadius: 1 }} />
+                  <span style={{
+                    fontFamily: "var(--font-display)",
+                    fontSize: 13,
+                    fontWeight: isCurrent ? 600 : 400,
+                    color: isCompleted ? "var(--clr-cashmere)" : isCurrent ? "var(--clr-obsidian)" : "var(--clr-cashmere)",
+                  }}>
+                    {STEP_TYPE_LABELS[step.stepType] ?? step.stepType}
+                  </span>
+                  {isCurrent && (
+                    <span style={{ marginLeft: "auto", fontFamily: "var(--font-display)", fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--clr-primary)" }}>En cours</span>
                   )}
                 </div>
               );
             })}
-          </div>
-
-          {/* Current step label */}
-          <div style={{ marginBottom: "var(--space-lg)" }}>
-            <span style={{ fontFamily: "var(--font-display)", fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--clr-primary)" }}>
-              Étape {applicableSteps.findIndex((s) => s.id === currentStep?.id) + 1} sur {applicableSteps.length}
-            </span>
           </div>
 
           {/* Error message */}
