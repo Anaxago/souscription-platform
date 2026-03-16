@@ -191,6 +191,49 @@ html, body {
   color: var(--clr-off-white);
 }
 
+/* Hero two-column layout when image is present */
+.hero-dark__inner--with-image {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-xl);
+  align-items: center;
+}
+.hero-dark__text {
+  min-width: 0;
+}
+.hero-dark__image {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.hero-dark__image img {
+  width: 100%;
+  max-width: 480px;
+  height: auto;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+}
+
+/* Reassurance band sits below the two-column grid */
+.hero-dark__reassurance-wrap {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 var(--space-xl);
+  box-sizing: border-box;
+}
+
+@media (max-width: 940px) {
+  .hero-dark__inner--with-image {
+    grid-template-columns: 1fr;
+  }
+  .hero-dark__image {
+    order: -1;
+  }
+  .hero-dark__image img {
+    max-width: 100%;
+  }
+}
+
 .hero-tagline {
   font-family: var(--font-serif);
   font-size: clamp(18px, 2vw, 22px);

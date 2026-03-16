@@ -102,6 +102,20 @@ function formatAmount(cents: number): string {
 }
 
 /**
+ * Convert a Google Drive sharing URL to a direct image URL.
+ * Input:  https://drive.google.com/file/d/FILE_ID/view?usp=sharing
+ * Output: https://drive.google.com/uc?export=view&id=FILE_ID
+ * Non-Drive URLs are returned as-is.
+ */
+function toDirectImageUrl(url: string): string {
+  const match = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+  if (match) {
+    return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+  }
+  return url;
+}
+
+/**
  * Parse API advantages/disadvantages into clean sentences.
  * The API sometimes returns a single concatenated string with leading/trailing
  * dashes. Split on ". " and clean up each item as a complete phrase.
@@ -168,6 +182,8 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
       ? formatAmount(product.minimumInvestmentInCents)
       : null;
 
+  const heroImage = product.imageUrl ? toDirectImageUrl(product.imageUrl) : null;
+
   // Split product name on " - " for multi-line H1
   const nameParts = product.name.split(/\s*-\s*/);
 
@@ -190,38 +206,48 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
 
       {/* ━━ HERO DARK ━━ */}
       <section className="hero-dark">
-        <div className="hero-dark__inner">
-          <span className={`badge ${status.className}`}>{status.label}</span>
+        <div className={`hero-dark__inner${heroImage ? " hero-dark__inner--with-image" : ""}`}>
+          <div className="hero-dark__text">
+            <span className={`badge ${status.className}`}>{status.label}</span>
 
-          <div className="fund-card__tags" style={{ marginTop: "var(--space-md)" }}>
-            {product.investmentSectors.map((sector) => (
-              <span key={sector} className="tag">
-                {SECTOR_LABELS[sector] ?? sector}
-              </span>
-            ))}
+            <div className="fund-card__tags" style={{ marginTop: "var(--space-md)" }}>
+              {product.investmentSectors.map((sector) => (
+                <span key={sector} className="tag">
+                  {SECTOR_LABELS[sector] ?? sector}
+                </span>
+              ))}
+            </div>
+
+            <h1 className="text-h1">
+              {nameParts.map((part, i) => (
+                <span key={i}>
+                  {i > 0 && <br />}
+                  {part}
+                </span>
+              ))}
+            </h1>
+
+            <p className="hero-tagline">
+              Construisez librement votre allocation avec un contrat d'assurance-vie
+              multisupport accessible et diversifié.
+            </p>
+
+            {canSubscribe && (
+              <a href={ctaHref} className="btn-primary btn-primary--hero">
+                Souscrire maintenant
+              </a>
+            )}
           </div>
 
-          <h1 className="text-h1">
-            {nameParts.map((part, i) => (
-              <span key={i}>
-                {i > 0 && <br />}
-                {part}
-              </span>
-            ))}
-          </h1>
-
-          <p className="hero-tagline">
-            Construisez librement votre allocation avec un contrat d'assurance-vie
-            multisupport accessible et diversifié.
-          </p>
-
-          {canSubscribe && (
-            <a href={ctaHref} className="btn-primary btn-primary--hero">
-              Souscrire maintenant
-            </a>
+          {heroImage && (
+            <div className="hero-dark__image">
+              <img src={heroImage} alt={product.name} />
+            </div>
           )}
+        </div>
 
-          {/* Reassurance band — value/label pairs */}
+        {/* Reassurance band — value/label pairs */}
+        <div className="hero-dark__reassurance-wrap">
           <div className="hero-reassurance">
             <div className="hero-reassurance__item">
               <span className="hero-reassurance__value">15 ans</span>
