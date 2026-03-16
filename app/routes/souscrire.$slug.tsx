@@ -103,14 +103,14 @@ function formatAmount(cents: number): string {
 }
 
 /**
- * Convert a Google Drive sharing URL to a direct image thumbnail URL.
- * The /thumbnail endpoint works reliably (unlike uc?export which is blocked).
+ * Convert a Google Drive sharing URL to a direct image URL.
+ * Uses lh3.googleusercontent.com which serves images directly without redirects.
  * Non-Drive URLs are returned as-is.
  */
 function toDirectImageUrl(url: string): string {
   const match = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
   if (match) {
-    return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1000`;
+    return `https://lh3.googleusercontent.com/d/${match[1]}=w1000`;
   }
   return url;
 }
