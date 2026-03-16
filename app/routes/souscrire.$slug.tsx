@@ -494,7 +494,7 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
                     <circle cx="12" cy="12" r="10" />
                     <polyline points="12 6 12 12 16 14" />
                   </svg>
-                  Souscription en 15 min
+                  Souscription en 5 min
                 </div>
                 <div className="sticky-panel__reassurance-item">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="2">

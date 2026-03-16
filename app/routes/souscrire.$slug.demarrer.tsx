@@ -240,7 +240,7 @@ export default function DemarrerSouscription({ loaderData }: Route.ComponentProp
             paddingTop: "var(--space-md)",
             borderTop: "1px solid var(--clr-stroke-dark)",
           }}>
-            {["Signature électronique sécurisée", "Souscription en 15 min", "CIF enregistré AMF"].map((text) => (
+            {["Signature électronique sécurisée", "Souscription en 5 min", "CIF enregistré AMF"].map((text) => (
               <div key={text} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--clr-cashmere)" }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="2">
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
