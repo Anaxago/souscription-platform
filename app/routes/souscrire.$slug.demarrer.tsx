@@ -88,6 +88,22 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   const investor = (await investorRes.json()) as { id: string };
 
+  // Step 2b: Find active template to get issuanceOperationId
+  let issuanceOperationId: string | undefined;
+  const templatesRes = await api("/subscription-journey-templates");
+  if (templatesRes.ok) {
+    const templates = (await templatesRes.json()) as {
+      data?: { marketingProductId: string; issuanceOperationId: string | null; status: string }[];
+    };
+    const list = templates.data ?? (templates as unknown as { marketingProductId: string; issuanceOperationId: string | null; status: string }[]);
+    const match = (Array.isArray(list) ? list : []).find(
+      (t) => t.marketingProductId === marketingProductId && t.status === "ACTIVE" && t.issuanceOperationId,
+    );
+    if (match?.issuanceOperationId) {
+      issuanceOperationId = match.issuanceOperationId;
+    }
+  }
+
   // Step 3: Create SubscriptionJourney
   const journeyRes = await api("/subscription-journeys", {
     method: "POST",
@@ -95,6 +111,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       investorId: investor.id,
       investorType: "NATURAL",
       marketingProductId,
+      ...(issuanceOperationId ? { issuanceOperationId } : {}),
     }),
   });
 
