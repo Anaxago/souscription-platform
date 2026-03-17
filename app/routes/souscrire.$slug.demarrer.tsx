@@ -134,6 +134,15 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   const journey = (await journeyRes.json()) as { id: string };
 
+  // Verify the journey is readable before redirecting
+  const verifyRes = await api(`/subscription-journeys/${journey.id}`);
+  if (!verifyRes.ok) {
+    return {
+      success: false as const,
+      error: "Le parcours a été créé mais n'est pas accessible. Le template de ce produit est peut-être mal configuré. Contactez le support.",
+    };
+  }
+
   // Redirect to journey page
   throw redirect(`/souscrire/${slug}/parcours/${journey.id}`);
 }
