@@ -135,6 +135,7 @@ export default function InvestorProfileStep({
   const isLastCategory = currentCatIndex === categories.length - 1;
   const totalQuestions = categories.reduce((sum, c) => sum + c.questions.length, 0);
   const answeredCount = Object.keys(answers).length;
+  const questionsBeforeCurrent = categories.slice(0, currentCatIndex).reduce((sum, c) => sum + c.questions.length, 0);
 
   function allQuestionsAnsweredInCategory(cat: GroupedCategory): boolean {
     return cat.questions.every((q) => {
@@ -282,7 +283,7 @@ export default function InvestorProfileStep({
           {currentCat.questions.map((q, qi) => (
             <div key={q.id}>
               <label className="form-label" style={{ fontSize: 13, textTransform: "none", letterSpacing: "normal" }}>
-                {qi + 1}. {q.wording}
+                {questionsBeforeCurrent + qi + 1}. {q.wording}
               </label>
               <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-xs)" }}>
                 {q.choices.map((choice) => {
