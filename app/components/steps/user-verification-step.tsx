@@ -28,6 +28,8 @@ export default function UserVerificationStep({
   actionUrl,
   onComplete,
 }: Props) {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [uploading, setUploading] = useState<string | null>(null);
   const [uploadedDocs, setUploadedDocs] = useState<UploadedDoc[]>([]);
   const [completing, setCompleting] = useState(false);
@@ -118,9 +120,21 @@ export default function UserVerificationStep({
   }
 
   async function handleComplete() {
+    if (!firstName.trim() || !lastName.trim()) {
+      setError("Le prénom et le nom sont requis.");
+      return;
+    }
     setCompleting(true);
     setError(null);
     try {
+      // Update person kernel with real name
+      await callAction({
+        type: "update-person-kernel",
+        personKernelId,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+      });
+
       await callAction({
         type: "complete-verification",
         journeyId,
@@ -136,6 +150,7 @@ export default function UserVerificationStep({
 
   const requiredDocs = DOC_TYPES.filter((d) => d.required);
   const allRequiredUploaded = requiredDocs.every((d) => uploadedDocs.some((u) => u.type === d.type));
+  const isFormValid = firstName.trim().length > 0 && lastName.trim().length > 0 && allRequiredUploaded;
 
   return (
     <div className="step-panel">
@@ -157,7 +172,19 @@ export default function UserVerificationStep({
 
       {error && <div className="form-error" style={{ marginBottom: "var(--space-md)" }}>{error}</div>}
 
-      {/* Document upload cards — always shown */}
+      {/* Identity fields */}
+      <div style={{ display: "flex", gap: "var(--space-sm)", marginBottom: "var(--space-lg)" }}>
+        <div style={{ flex: 1 }}>
+          <label className="form-label" htmlFor="kyc-firstName">Prénom</label>
+          <input id="kyc-firstName" className="form-input" placeholder="Jean" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label className="form-label" htmlFor="kyc-lastName">Nom</label>
+          <input id="kyc-lastName" className="form-input" placeholder="Dupont" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+        </div>
+      </div>
+
+      {/* Document upload cards */}
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
         {DOC_TYPES.map((doc) => {
           const uploaded = uploadedDocs.find((d) => d.type === doc.type);
@@ -239,10 +266,10 @@ export default function UserVerificationStep({
           width: "100%",
           justifyContent: "center",
           marginTop: "var(--space-md)",
-          opacity: allRequiredUploaded && !completing ? 1 : 0.5,
-          cursor: allRequiredUploaded && !completing ? "pointer" : "not-allowed",
+          opacity: isFormValid && !completing ? 1 : 0.5,
+          cursor: isFormValid && !completing ? "pointer" : "not-allowed",
         }}
-        disabled={!allRequiredUploaded || completing}
+        disabled={!isFormValid || completing}
         onClick={handleComplete}
       >
         {completing ? "Validation en cours..." : "Valider ma vérification d'identité"}

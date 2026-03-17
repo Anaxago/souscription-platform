@@ -17,7 +17,8 @@ type ActionPayload =
   | { type: "update-basket-dismemberment"; journeyId: string; dismembermentType: string }
   | { type: "evaluate-adequacy"; journeyId: string; stepId: string; investorType: string }
   | { type: "override-adequacy"; checkId: string; journeyId: string; stepId: string }
-  | { type: "upload-journey-document"; journeyId: string; stepId: string; documentType: string; documentId: string; fileName: string };
+  | { type: "upload-journey-document"; journeyId: string; stepId: string; documentType: string; documentId: string; fileName: string }
+  | { type: "update-person-kernel"; personKernelId: string; firstName: string; lastName: string };
 
 function errorResponse(message: string, status: number) {
   return Response.json({ error: message }, { status });
@@ -363,6 +364,22 @@ export async function action({ request }: Route.ActionArgs) {
       }
 
       return Response.json(await validateRes.json());
+    }
+
+    /* ── Update person kernel name ── */
+    case "update-person-kernel": {
+      const res = await api(`/person-kernels/${body.personKernelId}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          firstName: body.firstName,
+          lastName: body.lastName,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return errorResponse((err as Record<string, string>).message ?? "Erreur mise à jour identité", res.status);
+      }
+      return Response.json(await res.json());
     }
 
     default:
