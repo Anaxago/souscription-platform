@@ -189,6 +189,7 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
   const revalidator = useRevalidator();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [overrideStepId, setOverrideStepId] = useState<string | null>(null);
   const actionUrl = `/souscrire/${slug}/parcours/${journey.id}/action`;
 
   const applicableSteps = journey.steps
@@ -243,12 +244,30 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
     }
   }
 
+  async function navigateToStep(stepId: string) {
+    setActionError(null);
+    setOverrideStepId(stepId);
+    try {
+      await fetch(actionUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "navigate", journeyId: journey.id, stepId }),
+      });
+      revalidator.revalidate();
+    } catch {
+      // Navigation is best-effort — even if API fails, show the step
+    }
+  }
+
   const onStepComplete = () => {
+    setOverrideStepId(null);
     revalidator.revalidate();
   };
 
-  // Auto-render the current step's panel
-  const activeStep = currentStep;
+  // Show overridden step or current step
+  const activeStep = overrideStepId
+    ? applicableSteps.find((s) => s.id === overrideStepId) ?? currentStep
+    : currentStep;
 
   function renderStepPanel(step: JourneyStep) {
     if (step.stepType === "USER_VERIFICATION" && personKernelId) {
@@ -320,12 +339,19 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
 
           <nav className="journey-stepper">
             {applicableSteps.map((step, i) => {
-              const isCurrent = currentStep?.id === step.id;
+              const isCurrent = (overrideStepId ? overrideStepId === step.id : currentStep?.id === step.id);
               const isCompleted = step.stepStatus === "COMPLETED";
               const isPast = i < currentStepIndex;
+              const isClickable = isCompleted || isPast;
 
               return (
-                <div key={step.id} className={`journey-stepper__item${isCurrent ? " journey-stepper__item--active" : ""}${isCompleted ? " journey-stepper__item--done" : ""}`}>
+                <div
+                  key={step.id}
+                  className={`journey-stepper__item${isCurrent ? " journey-stepper__item--active" : ""}${isCompleted ? " journey-stepper__item--done" : ""}${isClickable ? " journey-stepper__item--clickable" : ""}`}
+                  onClick={isClickable ? () => navigateToStep(step.id) : undefined}
+                  role={isClickable ? "button" : undefined}
+                  tabIndex={isClickable ? 0 : undefined}
+                >
                   <div className="journey-stepper__connector">
                     <div className={`journey-stepper__dot${isCompleted ? " journey-stepper__dot--done" : ""}${isCurrent ? " journey-stepper__dot--active" : ""}`}>
                       {isCompleted ? (
@@ -342,7 +368,8 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
                     <span className="journey-stepper__name">
                       {STEP_TYPE_LABELS[step.stepType] ?? step.stepType}
                     </span>
-                    {isCurrent && <span className="journey-stepper__badge">En cours</span>}
+                    {isCurrent && !overrideStepId && <span className="journey-stepper__badge">En cours</span>}
+                    {isCurrent && overrideStepId && <span className="journey-stepper__badge">Consulter</span>}
                   </div>
                 </div>
               );

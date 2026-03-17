@@ -4,6 +4,7 @@ import { api } from "~/lib/api.server";
 type ActionPayload =
   | { type: "user-verification"; journeyId: string }
   | { type: "complete"; journeyId: string; stepId: string }
+  | { type: "navigate"; journeyId: string; stepId: string }
   | { type: "skip"; journeyId: string; stepId: string }
   | { type: "initiate-verification"; personId: string; investorId: string }
   | { type: "request-upload-url"; verificationId: string; fileName: string; contentType: string }
@@ -51,6 +52,19 @@ export async function action({ request }: Route.ActionArgs) {
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         return errorResponse((err as Record<string, string>).message ?? `Erreur ${res.status}`, res.status);
+      }
+      return Response.json(await res.json());
+    }
+
+    /* ── Navigate to step ── */
+    case "navigate": {
+      const res = await api(
+        `/subscription-journeys/${body.journeyId}/steps/${body.stepId}/navigate`,
+        { method: "POST" },
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return errorResponse((err as Record<string, string>).message ?? `Erreur navigation`, res.status);
       }
       return Response.json(await res.json());
     }

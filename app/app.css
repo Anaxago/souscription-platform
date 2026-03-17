@@ -1098,8 +1098,14 @@ html, body {
 }
 .journey-stepper__item--done .journey-stepper__name {
   color: var(--clr-cashmere);
-  text-decoration: line-through;
-  text-decoration-color: var(--clr-stroke-dark);
+}
+.journey-stepper__item--clickable {
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background 0.2s ease;
+}
+.journey-stepper__item--clickable:hover .journey-stepper__name {
+  color: var(--clr-primary);
 }
 .journey-stepper__badge {
   font-family: var(--font-display);
