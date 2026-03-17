@@ -148,6 +148,7 @@ export async function loader({ params }: Route.LoaderArgs) {
     minimumInvestmentInCents: number | null;
     minimumInvestmentCurrency: string;
     financialInstrumentId: string | null;
+    shares: { id: string; name: string; minimumInvestmentInCents: number; minimumInvestmentCurrency: string }[];
   } | null = null;
   const productRes = await api(`/marketing-products/${journey.marketingProductId}`);
   if (productRes.ok) {
@@ -157,7 +158,16 @@ export async function loader({ params }: Route.LoaderArgs) {
       minimumInvestmentCurrency: string;
       financialInstrumentId: string | null;
     };
-    marketingProduct = p;
+    // Fetch shares if product has a financial instrument
+    let shares: { id: string; name: string; minimumInvestmentInCents: number; minimumInvestmentCurrency: string }[] = [];
+    if (p.financialInstrumentId) {
+      const fiRes = await api(`/financial-instruments/${p.financialInstrumentId}`);
+      if (fiRes.ok) {
+        const fi = (await fiRes.json()) as { shares: { id: string; name: string; minimumInvestmentInCents: number; minimumInvestmentCurrency: string }[] };
+        shares = fi.shares ?? [];
+      }
+    }
+    marketingProduct = { ...p, shares };
   }
 
   return { journey, slug, personKernelId, marketingProduct };
@@ -248,7 +258,7 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
       return <InvestorProfileStep journeyId={journey.id} stepId={step.id} investorId={journey.investorId} personKernelId={personKernelId} requiredCategories={(step.config as { requiredCategories?: string[] } | null)?.requiredCategories ?? null} actionUrl={actionUrl} onComplete={onStepComplete} />;
     }
     if (step.stepType === "PRODUCT_SELECTION" && marketingProduct) {
-      return <ProductSelectionStep journeyId={journey.id} stepId={step.id} minimumInvestmentInCents={marketingProduct.minimumInvestmentInCents} minimumInvestmentCurrency={marketingProduct.minimumInvestmentCurrency} productName={marketingProduct.name} financialInstrumentId={marketingProduct.financialInstrumentId} existingLines={(journey.basket?.lines ?? []) as unknown as { lineType: string; financialInstrumentId: string | null; requestedAmount: number | null; requestedSecuritiesCount: number | null }[]} actionUrl={actionUrl} onComplete={onStepComplete} />;
+      return <ProductSelectionStep journeyId={journey.id} stepId={step.id} minimumInvestmentInCents={marketingProduct.minimumInvestmentInCents} minimumInvestmentCurrency={marketingProduct.minimumInvestmentCurrency} productName={marketingProduct.name} financialInstrumentId={marketingProduct.financialInstrumentId} shares={marketingProduct.shares} existingLines={(journey.basket?.lines ?? []) as unknown as { lineType: string; financialInstrumentId: string | null; requestedAmount: number | null; requestedSecuritiesCount: number | null }[]} actionUrl={actionUrl} onComplete={onStepComplete} />;
     }
     if (step.stepType === "PRODUCT_QUESTIONS") {
       return <ProductQuestionsStep journeyId={journey.id} stepId={step.id} config={step.config as { questions?: { questionId: string; questionLabel: string; choices: { answerId: string; label: string }[] }[] } | null} existingAnswers={journey.basket?.productQuestionAnswers ?? []} actionUrl={actionUrl} onComplete={onStepComplete} />;

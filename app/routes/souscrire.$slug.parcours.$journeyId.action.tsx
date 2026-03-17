@@ -12,7 +12,7 @@ type ActionPayload =
   | { type: "fetch-assessment-questions" }
   | { type: "submit-assessment-category"; investorId: string; personKernelId: string; category: string; answers: { questionId: string; questionVersion: number; questionWordingSnapshot: string; answerValue: string | string[] }[] }
   | { type: "answer-product-questions"; journeyId: string; answers: { questionId: string; questionLabel: string; answerId: string; snapshotted: boolean }[] }
-  | { type: "add-basket-line"; journeyId: string; lineType: string; financialInstrumentId: string | null; requestedAmount: number }
+  | { type: "add-basket-line"; journeyId: string; lineType: string; financialInstrumentId: string | null; shareId: string | null; requestedAmount: number }
   | { type: "set-envelope-target"; journeyId: string; targetType: string; envelopeType: string; existingEnvelopeRef?: string }
   | { type: "update-basket-dismemberment"; journeyId: string; dismembermentType: string }
   | { type: "evaluate-adequacy"; journeyId: string; stepId: string; investorType: string }
@@ -162,6 +162,9 @@ export async function action({ request }: Route.ActionArgs) {
       };
       if (body.financialInstrumentId) {
         lineBody.financialInstrumentId = body.financialInstrumentId;
+      }
+      if (body.shareId) {
+        lineBody.shareId = body.shareId;
       }
       const res = await api(
         `/subscription-journeys/${body.journeyId}/basket/lines`,

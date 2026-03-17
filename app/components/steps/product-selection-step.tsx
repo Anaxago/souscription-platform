@@ -1,5 +1,12 @@
 import { useState } from "react";
 
+interface Share {
+  id: string;
+  name: string;
+  minimumInvestmentInCents: number;
+  minimumInvestmentCurrency: string;
+}
+
 interface Props {
   journeyId: string;
   stepId: string;
@@ -7,6 +14,7 @@ interface Props {
   minimumInvestmentCurrency: string;
   productName: string;
   financialInstrumentId: string | null;
+  shares: Share[];
   existingLines: BasketLine[];
   actionUrl: string;
   onComplete: () => void;
@@ -36,10 +44,13 @@ export default function ProductSelectionStep({
   minimumInvestmentCurrency,
   productName,
   financialInstrumentId,
+  shares,
   existingLines,
   actionUrl,
   onComplete,
 }: Props) {
+  // Auto-select the first (or only) share
+  const defaultShare = shares[0] ?? null;
   const minCents = minimumInvestmentInCents ?? 0;
   const currency = minimumInvestmentCurrency || "EUR";
 
@@ -78,6 +89,7 @@ export default function ProductSelectionStep({
         journeyId,
         lineType: financialInstrumentId ? "FINANCIAL_INSTRUMENT" : "SUPPORT",
         financialInstrumentId,
+        shareId: defaultShare?.id ?? null,
         requestedAmount: amountCents,
       });
 
