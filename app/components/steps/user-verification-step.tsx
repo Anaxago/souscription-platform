@@ -20,6 +20,19 @@ const DOC_TYPES = [
   { type: "PROOF_OF_ADDRESS", label: "Justificatif de domicile", accept: "image/*,application/pdf", required: true },
 ] as const;
 
+const NATIONALITIES = [
+  { code: "FR", label: "Française" },
+  { code: "BE", label: "Belge" },
+  { code: "CH", label: "Suisse" },
+  { code: "LU", label: "Luxembourgeoise" },
+  { code: "DE", label: "Allemande" },
+  { code: "IT", label: "Italienne" },
+  { code: "ES", label: "Espagnole" },
+  { code: "GB", label: "Britannique" },
+  { code: "US", label: "Américaine" },
+  { code: "OTHER", label: "Autre" },
+];
+
 export default function UserVerificationStep({
   journeyId,
   stepId,
@@ -28,8 +41,19 @@ export default function UserVerificationStep({
   actionUrl,
   onComplete,
 }: Props) {
+  // Identity fields
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [birthDate, setBirthDate] = useState("");
+  const [nationality, setNationality] = useState("FR");
+
+  // Address fields
+  const [street, setStreet] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [city, setCity] = useState("");
+  const [country, setCountry] = useState("FR");
+
+  // Documents
   const [uploading, setUploading] = useState<string | null>(null);
   const [uploadedDocs, setUploadedDocs] = useState<UploadedDoc[]>([]);
   const [completing, setCompleting] = useState(false);
@@ -51,7 +75,6 @@ export default function UserVerificationStep({
     return res.json();
   }
 
-  // Try to init person-verification (best effort)
   async function ensureVerification() {
     if (initAttempted) return verificationId;
     setInitAttempted(true);
@@ -72,11 +95,8 @@ export default function UserVerificationStep({
   async function handleFileUpload(docType: string, docLabel: string, file: File) {
     setUploading(docType);
     setError(null);
-
     try {
-      // Try person-verification upload flow if available
       const vId = await ensureVerification();
-
       if (vId) {
         const { uploadUrl, storageRef } = (await callAction({
           type: "request-upload-url",
@@ -84,14 +104,12 @@ export default function UserVerificationStep({
           fileName: file.name,
           contentType: file.type,
         })) as { uploadUrl: string; storageRef: string; documentId: string };
-
         const uploadRes = await fetch(uploadUrl, {
           method: "PUT",
           headers: { "Content-Type": file.type },
           body: file,
         });
         if (!uploadRes.ok) throw new Error("Erreur lors de l'envoi du fichier");
-
         await callAction({
           type: "register-document",
           verificationId: vId,
@@ -100,16 +118,11 @@ export default function UserVerificationStep({
           investorId,
         });
       }
-      // If no verificationId, we just track the file locally.
-      // The actual KYC document processing will be handled by an
-      // external provider (Ubble, Onfido) in production.
-
       setUploadedDocs((prev) => [
         ...prev.filter((d) => d.type !== docType),
         { type: docType, label: docLabel, fileName: file.name },
       ]);
-    } catch (e) {
-      // If person-verification upload fails, still track locally
+    } catch {
       setUploadedDocs((prev) => [
         ...prev.filter((d) => d.type !== docType),
         { type: docType, label: docLabel, fileName: file.name },
@@ -120,14 +133,14 @@ export default function UserVerificationStep({
   }
 
   async function handleComplete() {
-    if (!firstName.trim() || !lastName.trim()) {
-      setError("Le prénom et le nom sont requis.");
+    if (!firstName.trim() || !lastName.trim() || !birthDate || !street.trim() || !postalCode.trim() || !city.trim()) {
+      setError("Veuillez remplir tous les champs obligatoires.");
       return;
     }
     setCompleting(true);
     setError(null);
     try {
-      // Update person kernel with real name
+      // Update person kernel name
       await callAction({
         type: "update-person-kernel",
         personKernelId,
@@ -135,6 +148,23 @@ export default function UserVerificationStep({
         lastName: lastName.trim(),
       });
 
+      // Create full Person with identity + address
+      await callAction({
+        type: "create-person",
+        personKernelId,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        birthDate,
+        nationality,
+        address: {
+          street: street.trim(),
+          city: city.trim(),
+          postalCode: postalCode.trim(),
+          country,
+        },
+      });
+
+      // Complete verification
       await callAction({
         type: "complete-verification",
         journeyId,
@@ -150,7 +180,14 @@ export default function UserVerificationStep({
 
   const requiredDocs = DOC_TYPES.filter((d) => d.required);
   const allRequiredUploaded = requiredDocs.every((d) => uploadedDocs.some((u) => u.type === d.type));
-  const isFormValid = firstName.trim().length > 0 && lastName.trim().length > 0 && allRequiredUploaded;
+  const isFormValid =
+    firstName.trim().length > 0 &&
+    lastName.trim().length > 0 &&
+    birthDate.length > 0 &&
+    street.trim().length > 0 &&
+    postalCode.trim().length > 0 &&
+    city.trim().length > 0 &&
+    allRequiredUploaded;
 
   return (
     <div className="step-panel">
@@ -165,100 +202,118 @@ export default function UserVerificationStep({
         <div>
           <h2 className="step-panel__title">Vérification d'identité</h2>
           <p className="step-panel__desc">
-            Uploadez vos documents d'identité pour vérifier votre identité.
+            Renseignez vos informations personnelles et uploadez vos justificatifs.
           </p>
         </div>
       </div>
 
       {error && <div className="form-error" style={{ marginBottom: "var(--space-md)" }}>{error}</div>}
 
-      {/* Identity fields */}
-      <div style={{ display: "flex", gap: "var(--space-sm)", marginBottom: "var(--space-lg)" }}>
-        <div style={{ flex: 1 }}>
-          <label className="form-label" htmlFor="kyc-firstName">Prénom</label>
-          <input id="kyc-firstName" className="form-input" placeholder="Jean" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label className="form-label" htmlFor="kyc-lastName">Nom</label>
-          <input id="kyc-lastName" className="form-input" placeholder="Dupont" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+      {/* ── Identity ── */}
+      <div style={{ marginBottom: "var(--space-lg)" }}>
+        <h3 style={{ fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 600, color: "var(--clr-obsidian)", marginBottom: "var(--space-md)" }}>
+          Identité
+        </h3>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-sm)" }}>
+          <div>
+            <label className="form-label" htmlFor="kyc-firstName">Prénom *</label>
+            <input id="kyc-firstName" className="form-input" placeholder="Jean" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+          </div>
+          <div>
+            <label className="form-label" htmlFor="kyc-lastName">Nom *</label>
+            <input id="kyc-lastName" className="form-input" placeholder="Dupont" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+          </div>
+          <div>
+            <label className="form-label" htmlFor="kyc-birthDate">Date de naissance *</label>
+            <input id="kyc-birthDate" className="form-input" type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
+          </div>
+          <div>
+            <label className="form-label" htmlFor="kyc-nationality">Nationalité *</label>
+            <select id="kyc-nationality" className="form-input" value={nationality} onChange={(e) => setNationality(e.target.value)}>
+              {NATIONALITIES.map((n) => (
+                <option key={n.code} value={n.code}>{n.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* Document upload cards */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
-        {DOC_TYPES.map((doc) => {
-          const uploaded = uploadedDocs.find((d) => d.type === doc.type);
-          const isUploading = uploading === doc.type;
+      {/* ── Address ── */}
+      <div style={{ marginBottom: "var(--space-lg)" }}>
+        <h3 style={{ fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 600, color: "var(--clr-obsidian)", marginBottom: "var(--space-md)" }}>
+          Adresse
+        </h3>
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
+          <div>
+            <label className="form-label" htmlFor="kyc-street">Adresse *</label>
+            <input id="kyc-street" className="form-input" placeholder="12 rue de la Paix" value={street} onChange={(e) => setStreet(e.target.value)} />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "var(--space-sm)" }}>
+            <div>
+              <label className="form-label" htmlFor="kyc-postalCode">Code postal *</label>
+              <input id="kyc-postalCode" className="form-input" placeholder="75001" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} />
+            </div>
+            <div>
+              <label className="form-label" htmlFor="kyc-city">Ville *</label>
+              <input id="kyc-city" className="form-input" placeholder="Paris" value={city} onChange={(e) => setCity(e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <label className="form-label" htmlFor="kyc-country">Pays *</label>
+            <select id="kyc-country" className="form-input" value={country} onChange={(e) => setCountry(e.target.value)}>
+              <option value="FR">France</option>
+              <option value="BE">Belgique</option>
+              <option value="CH">Suisse</option>
+              <option value="LU">Luxembourg</option>
+              <option value="DE">Allemagne</option>
+            </select>
+          </div>
+        </div>
+      </div>
 
-          return (
-            <div key={doc.type} className="upload-card">
-              <div className="upload-card__info">
-                <span className="upload-card__label">
-                  {doc.label}
-                  {doc.required && <span style={{ color: "var(--clr-mauve)", marginLeft: 4 }}>*</span>}
-                </span>
+      {/* ── Documents ── */}
+      <div style={{ marginBottom: "var(--space-md)" }}>
+        <h3 style={{ fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 600, color: "var(--clr-obsidian)", marginBottom: "var(--space-md)" }}>
+          Justificatifs
+        </h3>
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
+          {DOC_TYPES.map((doc) => {
+            const uploaded = uploadedDocs.find((d) => d.type === doc.type);
+            const isUploading = uploading === doc.type;
+            return (
+              <div key={doc.type} className="upload-card">
+                <div className="upload-card__info">
+                  <span className="upload-card__label">
+                    {doc.label}{doc.required && <span style={{ color: "var(--clr-mauve)", marginLeft: 4 }}>*</span>}
+                  </span>
+                  {uploaded ? (
+                    <span className="upload-card__file">{uploaded.fileName}</span>
+                  ) : (
+                    <span className="upload-card__file" style={{ fontStyle: "italic" }}>Non uploadé</span>
+                  )}
+                </div>
+                <input type="file" accept={doc.accept} style={{ display: "none" }} ref={(el) => { fileInputRefs.current[doc.type] = el; }} onChange={(e) => { const file = e.target.files?.[0]; if (file) handleFileUpload(doc.type, doc.label, file); e.target.value = ""; }} />
                 {uploaded ? (
-                  <span className="upload-card__file">{uploaded.fileName}</span>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+                    <div className="upload-card__status upload-card__status--done">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+                    </div>
+                    <button className="upload-card__btn" onClick={() => fileInputRefs.current[doc.type]?.click()} title="Remplacer">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                    </button>
+                  </div>
                 ) : (
-                  <span className="upload-card__file" style={{ fontStyle: "italic" }}>Non uploadé</span>
+                  <button className="upload-card__btn" disabled={isUploading} onClick={() => fileInputRefs.current[doc.type]?.click()}>
+                    {isUploading ? <span className="document-card__spinner" /> : (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+                    )}
+                  </button>
                 )}
               </div>
-
-              <input
-                type="file"
-                accept={doc.accept}
-                style={{ display: "none" }}
-                ref={(el) => { fileInputRefs.current[doc.type] = el; }}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleFileUpload(doc.type, doc.label, file);
-                  e.target.value = "";
-                }}
-              />
-
-              {uploaded ? (
-                <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
-                  <div className="upload-card__status upload-card__status--done">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </div>
-                  <button
-                    className="upload-card__btn"
-                    onClick={() => fileInputRefs.current[doc.type]?.click()}
-                    title="Remplacer"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
-                  </button>
-                </div>
-              ) : (
-                <button
-                  className="upload-card__btn"
-                  disabled={isUploading}
-                  onClick={() => fileInputRefs.current[doc.type]?.click()}
-                >
-                  {isUploading ? (
-                    <span className="document-card__spinner" />
-                  ) : (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                      <polyline points="17 8 12 3 7 8" />
-                      <line x1="12" y1="3" x2="12" y2="15" />
-                    </svg>
-                  )}
-                </button>
-              )}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
-
-      <p style={{ fontSize: 12, color: "var(--clr-cashmere)", marginTop: "var(--space-sm)" }}>
-        * Documents obligatoires
-      </p>
 
       <button
         className="btn-primary"
@@ -267,7 +322,6 @@ export default function UserVerificationStep({
           justifyContent: "center",
           marginTop: "var(--space-md)",
           opacity: isFormValid && !completing ? 1 : 0.5,
-          cursor: isFormValid && !completing ? "pointer" : "not-allowed",
         }}
         disabled={!isFormValid || completing}
         onClick={handleComplete}

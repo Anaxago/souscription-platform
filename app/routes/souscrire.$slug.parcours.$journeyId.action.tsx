@@ -18,7 +18,8 @@ type ActionPayload =
   | { type: "evaluate-adequacy"; journeyId: string; stepId: string; investorType: string }
   | { type: "override-adequacy"; checkId: string; journeyId: string; stepId: string }
   | { type: "upload-journey-document"; journeyId: string; stepId: string; documentType: string; documentId: string; fileName: string }
-  | { type: "update-person-kernel"; personKernelId: string; firstName: string; lastName: string };
+  | { type: "update-person-kernel"; personKernelId: string; firstName: string; lastName: string }
+  | { type: "create-person"; personKernelId: string; firstName: string; lastName: string; birthDate: string; nationality: string; address: { street: string; city: string; postalCode: string; country: string } };
 
 function errorResponse(message: string, status: number) {
   return Response.json({ error: message }, { status });
@@ -367,6 +368,30 @@ export async function action({ request }: Route.ActionArgs) {
       }
 
       return Response.json(await validateRes.json());
+    }
+
+    /* ── Create full Person (identity + address) ── */
+    case "create-person": {
+      const res = await api("/persons", {
+        method: "POST",
+        body: JSON.stringify({
+          firstName: body.firstName,
+          lastName: body.lastName,
+          birthDate: body.birthDate,
+          nationality: body.nationality,
+          address: body.address,
+          personKernelId: body.personKernelId,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        // Ignore conflict (person already exists for this kernel)
+        if (res.status === 409) {
+          return Response.json({ ok: true });
+        }
+        return errorResponse((err as Record<string, string>).message ?? "Erreur création personne", res.status);
+      }
+      return Response.json(await res.json());
     }
 
     /* ── Update person kernel name ── */
