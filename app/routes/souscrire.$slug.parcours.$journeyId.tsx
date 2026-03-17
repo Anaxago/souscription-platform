@@ -126,20 +126,12 @@ export async function loader({ params }: Route.LoaderArgs) {
 
   const journeyRes = await api(`/subscription-journeys/${journeyId}`);
   if (!journeyRes.ok) {
-    // Try to get error details for debugging
-    const err = await journeyRes.json().catch(() => null);
-    console.error("Journey fetch failed:", journeyRes.status, err);
-    throw data(
-      { error: `Parcours introuvable (${journeyRes.status})` },
-      { status: journeyRes.status === 400 ? 400 : 404 },
-    );
+    throw data(null, { status: 404 });
   }
 
   const journey = (await journeyRes.json()) as SubscriptionJourney;
-
-  // Validate journey has required fields
   if (!journey.steps || !Array.isArray(journey.steps)) {
-    throw data({ error: "Parcours invalide" }, { status: 500 });
+    throw data(null, { status: 404 });
   }
 
   // Fetch investor to get personKernelId (needed for KYC)
