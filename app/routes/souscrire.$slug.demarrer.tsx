@@ -81,14 +81,22 @@ export async function action({ request, params }: Route.ActionArgs) {
       method: "POST",
       body: JSON.stringify({ name: "Entreprise", siret: "00000000000000" }),
     });
-    if (!leKernelRes.ok) return { error: "Erreur lors de la création du profil société.", product, slug };
+    if (!leKernelRes.ok) {
+      const err = await leKernelRes.json().catch(() => ({}));
+      const msg = (err as Record<string, string>).message ?? `Erreur ${leKernelRes.status}`;
+      return { error: `Erreur création profil société : ${msg}`, product, slug };
+    }
     const leKernel = (await leKernelRes.json()) as { id: string };
 
     const investorRes = await api("/legal-entity-investors", {
       method: "POST",
       body: JSON.stringify({ legalEntityKernelId: leKernel.id, operatedBy: kernel.id }),
     });
-    if (!investorRes.ok) return { error: "Erreur lors de la création de l'investisseur.", product, slug };
+    if (!investorRes.ok) {
+      const err = await investorRes.json().catch(() => ({}));
+      const msg = (err as Record<string, string>).message ?? `Erreur ${investorRes.status}`;
+      return { error: `Erreur création investisseur PM : ${msg}`, product, slug };
+    }
     const investor = (await investorRes.json()) as { id: string };
 
     const issuanceOperationId = await findIssuanceOperationId(product.id);
