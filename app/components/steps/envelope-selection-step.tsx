@@ -77,6 +77,7 @@ export default function EnvelopeSelectionStep({
         targetType,
         envelopeType,
         existingEnvelopeRef: targetType === "EXISTING" ? existingRef : undefined,
+        provider: targetType === "TO_CREATE" ? "Generali Vie" : undefined,
       });
       await callAction({ type: "complete", journeyId, stepId });
       onComplete();

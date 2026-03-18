@@ -14,7 +14,7 @@ type ActionPayload =
   | { type: "submit-assessment-category"; investorId: string; personKernelId: string; investorType: string; category: string; answers: { questionId: string; questionVersion: number; questionWordingSnapshot: string; answerValue: string | string[] }[] }
   | { type: "answer-product-questions"; journeyId: string; answers: { questionId: string; questionLabel: string; answerId: string; snapshotted: boolean }[] }
   | { type: "add-basket-line"; journeyId: string; lineType: string; financialInstrumentId: string | null; shareId: string | null; requestedAmount: number }
-  | { type: "set-envelope-target"; journeyId: string; targetType: string; envelopeType: string; existingEnvelopeRef?: string }
+  | { type: "set-envelope-target"; journeyId: string; targetType: string; envelopeType: string; existingEnvelopeRef?: string; provider?: string }
   | { type: "update-basket-dismemberment"; journeyId: string; dismembermentType: string }
   | { type: "evaluate-adequacy"; journeyId: string; stepId: string; investorType: string }
   | { type: "override-adequacy"; checkId: string; journeyId: string; stepId: string }
@@ -210,6 +210,9 @@ export async function action({ request }: Route.ActionArgs) {
       };
       if (body.existingEnvelopeRef) {
         envelopeBody.existingEnvelopeRef = body.existingEnvelopeRef;
+      }
+      if (body.provider) {
+        envelopeBody.provider = body.provider;
       }
       const res = await api(
         `/subscription-journeys/${body.journeyId}/basket/envelope-target`,
