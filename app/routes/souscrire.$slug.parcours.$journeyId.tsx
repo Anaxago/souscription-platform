@@ -306,7 +306,7 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
       return <InvestorProfileStep journeyId={journey.id} stepId={step.id} investorId={journey.investorId} personKernelId={personKernelId} investorType={journey.investorType} requiredCategories={(step.config as { requiredCategories?: string[] } | null)?.requiredCategories ?? null} actionUrl={actionUrl} onComplete={onStepComplete} />;
     }
     if (step.stepType === "KNOWLEDGE_QUIZ" && personKernelId) {
-      return <InvestorProfileStep journeyId={journey.id} stepId={step.id} investorId={journey.investorId} personKernelId={personKernelId} investorType={journey.investorType} requiredCategories={["KNOWLEDGE"]} actionUrl={actionUrl} onComplete={onStepComplete} />;
+      return <InvestorProfileStep journeyId={journey.id} stepId={step.id} investorId={journey.investorId} personKernelId={personKernelId} investorType={journey.investorType} requiredCategories={(step.config as { requiredCategories?: string[] } | null)?.requiredCategories ?? null} actionUrl={actionUrl} onComplete={onStepComplete} />;
     }
     if (step.stepType === "PRODUCT_SELECTION" && marketingProduct) {
       return <ProductSelectionStep journeyId={journey.id} stepId={step.id} minimumInvestmentInCents={marketingProduct.minimumInvestmentInCents} minimumInvestmentCurrency={marketingProduct.minimumInvestmentCurrency} productName={marketingProduct.name} financialInstrumentId={marketingProduct.financialInstrumentId} shares={marketingProduct.shares} existingLines={(journey.basket?.lines ?? []) as unknown as { lineType: string; financialInstrumentId: string | null; requestedAmount: number | null; requestedSecuritiesCount: number | null }[]} actionUrl={actionUrl} onComplete={onStepComplete} />;
