@@ -35,7 +35,7 @@ function formatCurrency(cents: number, currency: string): string {
   }).format(cents / 100);
 }
 
-const PRESET_AMOUNTS = [500000, 1000000, 2500000, 5000000]; // 5k, 10k, 25k, 50k
+const PRESET_AMOUNTS = [5000000, 10000000, 25000000, 50000000]; // 50k, 100k, 250k, 500k
 
 export default function ProductSelectionStep({
   journeyId,
