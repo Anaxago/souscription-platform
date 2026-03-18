@@ -22,6 +22,13 @@ const CATEGORY_LABELS: Record<string, { label: string; desc: string }> = {
   DIRECT_OWNERSHIP: { label: "Détention directe", desc: "Sans enveloppe fiscale" },
 };
 
+const DEFAULT_ENVELOPES: EligibleEnvelope[] = [
+  { category: "AV", name: "Assurance-vie" },
+  { category: "PER", name: "PER" },
+  { category: "CTO", name: "Compte-titres" },
+  { category: "PEA", name: "PEA" },
+];
+
 const TARGET_TYPES = [
   { value: "TO_CREATE", label: "Ouvrir un nouveau contrat" },
   { value: "EXISTING", label: "Utiliser un contrat existant" },
@@ -34,7 +41,8 @@ export default function EnvelopeSelectionStep({
   actionUrl,
   onComplete,
 }: Props) {
-  const envelopeOptions = eligibleEnvelopes.map((e) => ({
+  const envelopes = eligibleEnvelopes.length > 0 ? eligibleEnvelopes : DEFAULT_ENVELOPES;
+  const envelopeOptions = envelopes.map((e) => ({
     value: e.category,
     label: CATEGORY_LABELS[e.category]?.label ?? e.name,
     desc: CATEGORY_LABELS[e.category]?.desc ?? e.name,
