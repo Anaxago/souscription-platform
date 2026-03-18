@@ -65,6 +65,7 @@ const STEP_TYPE_LABELS: Record<string, string> = {
   ADEQUACY_CHECK: "Test d'adéquation",
   INCOME_ASSESSMENT: "Évaluation des revenus",
   RISK_ASSESSMENT: "Profil de risque",
+  KNOWLEDGE_QUIZ: "Quiz de connaissances",
   INVESTMENT_KNOWLEDGE: "Connaissances en investissement",
   BASKET_CONFIGURATION: "Configuration du panier",
   SIGNATURE: "Signature électronique",
@@ -81,6 +82,7 @@ const STEP_TYPE_DESCRIPTIONS: Record<string, string> = {
   DISMEMBERMENT_SELECTION: "Options de démembrement de propriété",
   DOCUMENT_UPLOAD: "Pièce d'identité et justificatifs",
   ADEQUACY_CHECK: "Vérification de l'adéquation du produit",
+  KNOWLEDGE_QUIZ: "Évaluez vos connaissances financières",
   DOCUMENT_REVIEW_AND_SIGNATURE: "Signature électronique des documents",
 };
 
@@ -302,6 +304,9 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
     }
     if (step.stepType === "INVESTOR_PROFILE" && personKernelId) {
       return <InvestorProfileStep journeyId={journey.id} stepId={step.id} investorId={journey.investorId} personKernelId={personKernelId} investorType={journey.investorType} requiredCategories={(step.config as { requiredCategories?: string[] } | null)?.requiredCategories ?? null} actionUrl={actionUrl} onComplete={onStepComplete} />;
+    }
+    if (step.stepType === "KNOWLEDGE_QUIZ" && personKernelId) {
+      return <InvestorProfileStep journeyId={journey.id} stepId={step.id} investorId={journey.investorId} personKernelId={personKernelId} investorType={journey.investorType} requiredCategories={["KNOWLEDGE"]} actionUrl={actionUrl} onComplete={onStepComplete} />;
     }
     if (step.stepType === "PRODUCT_SELECTION" && marketingProduct) {
       return <ProductSelectionStep journeyId={journey.id} stepId={step.id} minimumInvestmentInCents={marketingProduct.minimumInvestmentInCents} minimumInvestmentCurrency={marketingProduct.minimumInvestmentCurrency} productName={marketingProduct.name} financialInstrumentId={marketingProduct.financialInstrumentId} shares={marketingProduct.shares} existingLines={(journey.basket?.lines ?? []) as unknown as { lineType: string; financialInstrumentId: string | null; requestedAmount: number | null; requestedSecuritiesCount: number | null }[]} actionUrl={actionUrl} onComplete={onStepComplete} />;
