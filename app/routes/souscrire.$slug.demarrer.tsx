@@ -14,6 +14,12 @@ interface MarketingProduct {
   status: string;
 }
 
+interface LegalEntityKernel {
+  id: string;
+  name: string;
+  siret: string;
+}
+
 /* ──────────────────────────────────────────────
    Helpers
    ────────────────────────────────────────────── */
@@ -37,7 +43,7 @@ async function findIssuanceOperationId(productId: string): Promise<string | unde
 }
 
 /* ──────────────────────────────────────────────
-   Loader — fetch product for display
+   Loader — fetch product + existing legal entity kernels
    ────────────────────────────────────────────── */
 
 export async function loader({ params }: Route.LoaderArgs) {
@@ -48,7 +54,19 @@ export async function loader({ params }: Route.LoaderArgs) {
   const product = (await productRes.json()) as MarketingProduct;
   if (product.status !== "OPEN") throw data(null, { status: 403 });
 
-  return { product, slug };
+  // Fetch existing legal entity kernels
+  let legalEntityKernels: LegalEntityKernel[] = [];
+  try {
+    const res = await api("/legal-entity-kernels?pageSize=100");
+    if (res.ok) {
+      const body = (await res.json()) as { data: LegalEntityKernel[] };
+      legalEntityKernels = body.data ?? [];
+    }
+  } catch {
+    // Non-blocking
+  }
+
+  return { product, slug, legalEntityKernels };
 }
 
 export function meta() {
@@ -63,42 +81,71 @@ export async function action({ request, params }: Route.ActionArgs) {
   const { slug } = params;
   const formData = await request.formData();
   const investorType = formData.get("investorType") as string;
+  const leKernelMode = formData.get("leKernelMode") as string; // "existing" or "new"
+  const existingLeKernelId = formData.get("existingLeKernelId") as string;
+  const newCompanyName = formData.get("newCompanyName") as string;
+  const newCompanySiret = formData.get("newCompanySiret") as string;
 
   const productRes = await api(`/marketing-products/by-slug/${slug}`);
   if (!productRes.ok) throw data(null, { status: 404 });
   const product = (await productRes.json()) as MarketingProduct;
 
+  // Fetch kernels for re-render on error
+  let legalEntityKernels: LegalEntityKernel[] = [];
+  try {
+    const res = await api("/legal-entity-kernels?pageSize=100");
+    if (res.ok) {
+      const body = (await res.json()) as { data: LegalEntityKernel[] };
+      legalEntityKernels = body.data ?? [];
+    }
+  } catch { /* */ }
+
+  const errorData = { product, slug, legalEntityKernels };
+
   if (investorType === "LEGAL") {
     // ── Legal entity flow ──
+    // 1. PersonKernel for operator
     const kernelRes = await api("/person-kernels", {
       method: "POST",
       body: JSON.stringify({ firstName: "Représentant", lastName: "Légal" }),
     });
-    if (!kernelRes.ok) return { error: "Erreur lors de la création du profil opérateur.", product, slug };
+    if (!kernelRes.ok) return { error: "Erreur lors de la création du profil opérateur.", ...errorData };
     const kernel = (await kernelRes.json()) as { id: string };
 
-    const leKernelRes = await api("/legal-entity-kernels", {
-      method: "POST",
-      body: JSON.stringify({ name: "Entreprise", siret: `${Date.now()}`.slice(0, 13) + "0" }),
-    });
-    if (!leKernelRes.ok) {
-      const err = await leKernelRes.json().catch(() => ({}));
-      const msg = (err as Record<string, string>).message ?? `Erreur ${leKernelRes.status}`;
-      return { error: `Erreur création profil société : ${msg}`, product, slug };
+    // 2. Get or create LegalEntityKernel
+    let leKernelId: string;
+    if (leKernelMode === "existing" && existingLeKernelId) {
+      leKernelId = existingLeKernelId;
+    } else {
+      if (!newCompanyName?.trim() || !newCompanySiret?.trim()) {
+        return { error: "Veuillez renseigner le nom et le SIRET de la société.", ...errorData };
+      }
+      const leKernelRes = await api("/legal-entity-kernels", {
+        method: "POST",
+        body: JSON.stringify({ name: newCompanyName.trim(), siret: newCompanySiret.trim() }),
+      });
+      if (!leKernelRes.ok) {
+        const err = await leKernelRes.json().catch(() => ({}));
+        const msg = (err as Record<string, string>).message ?? `Erreur ${leKernelRes.status}`;
+        return { error: `Erreur création société : ${msg}`, ...errorData };
+      }
+      const leKernel = (await leKernelRes.json()) as { id: string };
+      leKernelId = leKernel.id;
     }
-    const leKernel = (await leKernelRes.json()) as { id: string };
 
+    // 3. Create LegalEntityInvestor
     const investorRes = await api("/legal-entity-investors", {
       method: "POST",
-      body: JSON.stringify({ legalEntityKernelId: leKernel.id, operatedBy: kernel.id }),
+      body: JSON.stringify({ legalEntityKernelId: leKernelId, operatedBy: kernel.id }),
     });
     if (!investorRes.ok) {
       const err = await investorRes.json().catch(() => ({}));
       const msg = (err as Record<string, string>).message ?? `Erreur ${investorRes.status}`;
-      return { error: `Erreur création investisseur PM : ${msg}`, product, slug };
+      return { error: `Erreur création investisseur : ${msg}`, ...errorData };
     }
     const investor = (await investorRes.json()) as { id: string };
 
+    // 4. Create journey
     const issuanceOperationId = await findIssuanceOperationId(product.id);
     const journeyRes = await api("/subscription-journeys", {
       method: "POST",
@@ -115,7 +162,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       const userMessage = rawMessage.includes("Cannot read") || rawMessage.includes("Internal")
         ? "Une erreur technique est survenue. Veuillez réessayer."
         : rawMessage || "Erreur lors du démarrage du parcours.";
-      return { error: userMessage, product, slug };
+      return { error: userMessage, ...errorData };
     }
     const journey = (await journeyRes.json()) as { id: string };
     throw redirect(`/souscrire/${slug}/parcours/${journey.id}`);
@@ -126,14 +173,14 @@ export async function action({ request, params }: Route.ActionArgs) {
     method: "POST",
     body: JSON.stringify({ firstName: "Investisseur", lastName: "Anonyme" }),
   });
-  if (!kernelRes.ok) return { error: "Erreur lors de la création du profil.", product, slug };
+  if (!kernelRes.ok) return { error: "Erreur lors de la création du profil.", ...errorData };
   const kernel = (await kernelRes.json()) as { id: string };
 
   const investorRes = await api("/individual-investors", {
     method: "POST",
     body: JSON.stringify({ personKernelId: kernel.id }),
   });
-  if (!investorRes.ok) return { error: "Erreur lors de la création de l'investisseur.", product, slug };
+  if (!investorRes.ok) return { error: "Erreur lors de la création de l'investisseur.", ...errorData };
   const investor = (await investorRes.json()) as { id: string };
 
   const issuanceOperationId = await findIssuanceOperationId(product.id);
@@ -152,25 +199,34 @@ export async function action({ request, params }: Route.ActionArgs) {
     const userMessage = rawMessage.includes("Cannot read") || rawMessage.includes("Internal")
       ? "Une erreur technique est survenue. Veuillez réessayer."
       : rawMessage || "Erreur lors du démarrage du parcours.";
-    return { error: userMessage, product, slug };
+    return { error: userMessage, ...errorData };
   }
   const journey = (await journeyRes.json()) as { id: string };
   throw redirect(`/souscrire/${slug}/parcours/${journey.id}`);
 }
 
 /* ──────────────────────────────────────────────
-   Component — investor type selection
+   Component — investor type + legal entity selection
    ────────────────────────────────────────────── */
 
 export default function DemarrerSouscription({ loaderData, actionData }: Route.ComponentProps) {
-  const loaderResult = loaderData as { product: MarketingProduct; slug: string };
-  const actionResult = actionData as { error?: string; product?: MarketingProduct; slug?: string } | undefined;
+  const loaderResult = loaderData as { product: MarketingProduct; slug: string; legalEntityKernels: LegalEntityKernel[] };
+  const actionResult = actionData as { error?: string; product?: MarketingProduct; slug?: string; legalEntityKernels?: LegalEntityKernel[] } | undefined;
   const product = actionResult?.product ?? loaderResult.product;
   const slug = actionResult?.slug ?? loaderResult.slug;
+  const legalEntityKernels = actionResult?.legalEntityKernels ?? loaderResult.legalEntityKernels;
   const errorMessage = actionResult?.error;
 
   const [investorType, setInvestorType] = useState("NATURAL");
+  const [leKernelMode, setLeKernelMode] = useState(legalEntityKernels.length > 0 ? "existing" : "new");
+  const [selectedLeKernelId, setSelectedLeKernelId] = useState(legalEntityKernels[0]?.id ?? "");
+  const [newName, setNewName] = useState("");
+  const [newSiret, setNewSiret] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  const isLegal = investorType === "LEGAL";
+  const isNewMode = leKernelMode === "new";
+  const canSubmit = !isLegal || (isNewMode ? newName.trim() && newSiret.trim() : selectedLeKernelId);
 
   return (
     <div className="ds4-body">
@@ -195,7 +251,12 @@ export default function DemarrerSouscription({ loaderData, actionData }: Route.C
 
           <form method="post" onSubmit={() => setSubmitting(true)}>
             <input type="hidden" name="investorType" value={investorType} />
+            <input type="hidden" name="leKernelMode" value={leKernelMode} />
+            <input type="hidden" name="existingLeKernelId" value={selectedLeKernelId} />
+            <input type="hidden" name="newCompanyName" value={newName} />
+            <input type="hidden" name="newCompanySiret" value={newSiret} />
 
+            {/* ── Investor type choice ── */}
             <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)", marginBottom: "var(--space-lg)" }}>
               <label className="choice-card" style={{
                 borderColor: investorType === "NATURAL" ? "var(--clr-primary)" : undefined,
@@ -226,11 +287,71 @@ export default function DemarrerSouscription({ loaderData, actionData }: Route.C
               </label>
             </div>
 
+            {/* ── Legal entity selection (only when LEGAL) ── */}
+            {isLegal && (
+              <div style={{ marginBottom: "var(--space-lg)", display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
+                {/* Mode toggle */}
+                <div style={{ display: "flex", gap: "var(--space-sm)" }}>
+                  {legalEntityKernels.length > 0 && (
+                    <button type="button" className="choice-card" style={{
+                      flex: 1, cursor: "pointer", textAlign: "center",
+                      borderColor: !isNewMode ? "var(--clr-primary)" : undefined,
+                      background: !isNewMode ? "var(--clr-primary-light)" : undefined,
+                    }} onClick={() => setLeKernelMode("existing")}>
+                      <span className="choice-card__label">Société existante</span>
+                    </button>
+                  )}
+                  <button type="button" className="choice-card" style={{
+                    flex: 1, cursor: "pointer", textAlign: "center",
+                    borderColor: isNewMode ? "var(--clr-primary)" : undefined,
+                    background: isNewMode ? "var(--clr-primary-light)" : undefined,
+                  }} onClick={() => setLeKernelMode("new")}>
+                    <span className="choice-card__label">Nouvelle société</span>
+                  </button>
+                </div>
+
+                {/* Existing: select from list */}
+                {!isNewMode && legalEntityKernels.length > 0 && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-xs)" }}>
+                    {legalEntityKernels.map((le) => (
+                      <label key={le.id} className="choice-card" style={{
+                        borderColor: selectedLeKernelId === le.id ? "var(--clr-primary)" : undefined,
+                        background: selectedLeKernelId === le.id ? "var(--clr-primary-light)" : undefined,
+                      }}>
+                        <input type="radio" name="leKernelRadio" checked={selectedLeKernelId === le.id} onChange={() => setSelectedLeKernelId(le.id)} style={{ display: "none" }} />
+                        <span className="choice-card__radio">
+                          {selectedLeKernelId === le.id && <span className="choice-card__radio-dot" />}
+                        </span>
+                        <div style={{ flex: 1 }}>
+                          <span className="choice-card__label">{le.name}</span>
+                          <span className="choice-card__desc">SIRET : {le.siret}</span>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                )}
+
+                {/* New: name + SIRET fields */}
+                {isNewMode && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
+                    <div>
+                      <label className="form-label" htmlFor="new-company-name">Nom de la société *</label>
+                      <input id="new-company-name" className="form-input" placeholder="Ma Société SAS" value={newName} onChange={(e) => setNewName(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="form-label" htmlFor="new-company-siret">SIRET *</label>
+                      <input id="new-company-siret" className="form-input" placeholder="123 456 789 00012" maxLength={14} value={newSiret} onChange={(e) => setNewSiret(e.target.value.replace(/\s/g, ""))} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <button
               type="submit"
               className="btn-primary"
-              style={{ width: "100%", justifyContent: "center", opacity: submitting ? 0.5 : 1 }}
-              disabled={submitting}
+              style={{ width: "100%", justifyContent: "center", opacity: canSubmit && !submitting ? 1 : 0.5 }}
+              disabled={!canSubmit || submitting}
             >
               {submitting ? "Création du parcours..." : "Continuer"}
             </button>
