@@ -46,6 +46,8 @@ export default function UserVerificationStep({
   const [lastName, setLastName] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [nationality, setNationality] = useState("FR");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
 
   // Address fields
   const [street, setStreet] = useState("");
@@ -133,7 +135,7 @@ export default function UserVerificationStep({
   }
 
   async function handleComplete() {
-    if (!firstName.trim() || !lastName.trim() || !birthDate || !street.trim() || !postalCode.trim() || !city.trim()) {
+    if (!firstName.trim() || !lastName.trim() || !birthDate || !email.trim() || !phone.trim() || !street.trim() || !postalCode.trim() || !city.trim()) {
       setError("Veuillez remplir tous les champs obligatoires.");
       return;
     }
@@ -149,7 +151,7 @@ export default function UserVerificationStep({
       });
 
       // Create full Person with identity + address
-      await callAction({
+      const personResult = await callAction({
         type: "create-person",
         personKernelId,
         firstName: firstName.trim(),
@@ -163,6 +165,17 @@ export default function UserVerificationStep({
           country,
         },
       });
+
+      // Create Account with email + phone
+      const personId = (personResult as Record<string, string>).id;
+      if (personId) {
+        await callAction({
+          type: "create-account",
+          personId,
+          email: email.trim(),
+          phone: phone.trim(),
+        });
+      }
 
       // Complete verification
       await callAction({
@@ -184,6 +197,8 @@ export default function UserVerificationStep({
     firstName.trim().length > 0 &&
     lastName.trim().length > 0 &&
     birthDate.length > 0 &&
+    email.trim().length > 0 &&
+    phone.trim().length > 0 &&
     street.trim().length > 0 &&
     postalCode.trim().length > 0 &&
     city.trim().length > 0 &&
@@ -234,6 +249,14 @@ export default function UserVerificationStep({
                 <option key={n.code} value={n.code}>{n.label}</option>
               ))}
             </select>
+          </div>
+          <div>
+            <label className="form-label" htmlFor="kyc-email">Email *</label>
+            <input id="kyc-email" className="form-input" type="email" placeholder="jean.dupont@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <div>
+            <label className="form-label" htmlFor="kyc-phone">Téléphone *</label>
+            <input id="kyc-phone" className="form-input" type="tel" placeholder="+33 6 12 34 56 78" value={phone} onChange={(e) => setPhone(e.target.value)} />
           </div>
         </div>
       </div>

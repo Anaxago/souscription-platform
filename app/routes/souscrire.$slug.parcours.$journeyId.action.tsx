@@ -20,7 +20,8 @@ type ActionPayload =
   | { type: "override-adequacy"; checkId: string; journeyId: string; stepId: string }
   | { type: "upload-journey-document"; journeyId: string; stepId: string; documentType: string; documentId: string; fileName: string }
   | { type: "update-person-kernel"; personKernelId: string; firstName: string; lastName: string }
-  | { type: "create-person"; personKernelId: string; firstName: string; lastName: string; birthDate: string; nationality: string; address: { street: string; city: string; postalCode: string; country: string } };
+  | { type: "create-person"; personKernelId: string; firstName: string; lastName: string; birthDate: string; nationality: string; address: { street: string; city: string; postalCode: string; country: string } }
+  | { type: "create-account"; personId: string; email: string; phone: string };
 
 function errorResponse(message: string, status: number) {
   return Response.json({ error: message }, { status });
@@ -420,6 +421,26 @@ export async function action({ request }: Route.ActionArgs) {
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         return errorResponse((err as Record<string, string>).message ?? "Erreur mise à jour identité", res.status);
+      }
+      return Response.json(await res.json());
+    }
+
+    /* ── Create Account (email + phone) ── */
+    case "create-account": {
+      const res = await api("/accounts", {
+        method: "POST",
+        body: JSON.stringify({
+          email: body.email,
+          phone: body.phone,
+          personId: body.personId,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        if (res.status === 409) {
+          return Response.json({ ok: true });
+        }
+        return errorResponse((err as Record<string, string>).message ?? "Erreur création compte", res.status);
       }
       return Response.json(await res.json());
     }
