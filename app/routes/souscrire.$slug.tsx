@@ -285,7 +285,7 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
 
             {canSubscribe && (
               <a href={ctaHref} className="btn-primary btn-primary--hero">
-                Investir
+                Souscrire maintenant
               </a>
             )}
           </div>
@@ -469,7 +469,7 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
 
               {canSubscribe ? (
                 <a href={ctaHref} className="btn-primary">
-                  Investir
+                  Souscrire maintenant
                 </a>
               ) : (
                 <span
