@@ -334,11 +334,22 @@ export async function action({ request }: Route.ActionArgs) {
           initiatedByRole: "CLIENT",
         }),
       });
+      let sessionData: { id: string; categoryStates: { category: string; sessions: { id: string; status: string }[] }[] };
       if (!sessionRes.ok) {
-        const err = await sessionRes.json().catch(() => ({}));
-        return errorResponse((err as Record<string, string>).message ?? "Erreur démarrage session", sessionRes.status);
+        if (sessionRes.status === 409) {
+          // Session already exists — fetch the existing assessment
+          const existingRes = await api(`/investor-assessments/by-investor/${body.investorId}`);
+          if (!existingRes.ok) {
+            return errorResponse("Impossible de récupérer le profil existant", existingRes.status);
+          }
+          sessionData = (await existingRes.json()) as typeof sessionData;
+        } else {
+          const err = await sessionRes.json().catch(() => ({}));
+          return errorResponse((err as Record<string, string>).message ?? "Erreur démarrage session", sessionRes.status);
+        }
+      } else {
+        sessionData = (await sessionRes.json()) as typeof sessionData;
       }
-      const sessionData = (await sessionRes.json()) as { id: string; categoryStates: { category: string; sessions: { id: string; status: string }[] }[] };
       assessmentId = sessionData.id;
 
       // Find the session ID for this category (last DRAFT session)
