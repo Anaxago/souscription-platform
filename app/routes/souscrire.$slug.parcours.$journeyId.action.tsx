@@ -58,6 +58,8 @@ export async function action({ request }: Route.ActionArgs) {
         { method: "POST" },
       );
       if (!res.ok) {
+        // 409 = step already completed or cannot be completed manually — treat as success
+        if (res.status === 409) return Response.json({ ok: true });
         const err = await res.json().catch(() => ({}));
         return errorResponse((err as Record<string, string>).message ?? `Erreur ${res.status}`, res.status);
       }
