@@ -301,7 +301,30 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
       return <InvestorProfileStep journeyId={journey.id} stepId={step.id} investorId={journey.investorId} personKernelId={personKernelId} investorType={journey.investorType} requiredCategories={(step.config as { requiredCategories?: string[] } | null)?.requiredCategories ?? null} actionUrl={actionUrl} onComplete={onStepComplete} />;
     }
     if (step.stepType === "KNOWLEDGE_QUIZ") {
-      return <ProductQuestionsStep journeyId={journey.id} stepId={step.id} config={step.config as { questions?: { questionId: string; questionLabel: string; choices: { answerId: string; label: string }[] }[] } | null} existingAnswers={journey.basket?.productQuestionAnswers ?? []} actionUrl={actionUrl} onComplete={onStepComplete} />;
+      // Knowledge Quiz API not yet available — allow skipping
+      return (
+        <div className="step-panel">
+          <div className="step-panel__header">
+            <div className="step-panel__icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="step-panel__title">Quiz de connaissances</h2>
+              <p className="step-panel__desc">Ce quiz sera bientôt disponible. Vous pouvez passer cette étape pour le moment.</p>
+            </div>
+          </div>
+          <button className="btn-primary" style={{ width: "100%", justifyContent: "center", marginTop: "var(--space-lg)" }} onClick={async () => {
+            try {
+              await fetch(actionUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "complete", journeyId: journey.id, stepId: step.id }) });
+            } catch { /* handled server-side */ }
+            onStepComplete();
+          }}>
+            Passer cette étape
+          </button>
+        </div>
+      );
     }
     if (step.stepType === "PRODUCT_SELECTION" && marketingProduct) {
       return <ProductSelectionStep journeyId={journey.id} stepId={step.id} minimumInvestmentInCents={marketingProduct.minimumInvestmentInCents} minimumInvestmentCurrency={marketingProduct.minimumInvestmentCurrency} productName={marketingProduct.name} financialInstrumentId={marketingProduct.financialInstrumentId} shares={marketingProduct.shares} existingLines={(journey.basket?.lines ?? []) as unknown as { lineType: string; financialInstrumentId: string | null; requestedAmount: number | null; requestedSecuritiesCount: number | null }[]} actionUrl={actionUrl} onComplete={onStepComplete} />;
