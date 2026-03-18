@@ -172,28 +172,23 @@ export async function loader({ params }: Route.LoaderArgs) {
       minimumInvestmentInCents: number | null;
       minimumInvestmentCurrency: string;
       financialInstrumentId: string | null;
+      eligibleEnvelopeCategories?: string[];
     };
-    // Fetch shares and eligible holding types if product has a financial instrument
+
+    // Use eligibleEnvelopeCategories from marketing product
+    if (p.eligibleEnvelopeCategories && p.eligibleEnvelopeCategories.length > 0) {
+      eligibleEnvelopes = p.eligibleEnvelopeCategories.map((cat) => ({ category: cat, name: cat }));
+    }
+
+    // Fetch shares if product has a financial instrument
     let shares: { id: string; name: string; minimumInvestmentInCents: number; minimumInvestmentCurrency: string }[] = [];
     if (p.financialInstrumentId) {
       const fiRes = await api(`/financial-instruments/${p.financialInstrumentId}`);
       if (fiRes.ok) {
         const fi = (await fiRes.json()) as {
           shares: { id: string; name: string; minimumInvestmentInCents: number; minimumInvestmentCurrency: string }[];
-          eligibleHoldingTypeIds: string[];
         };
         shares = fi.shares ?? [];
-        // Fetch holding type kernels in parallel to get their categories
-        const htResults = await Promise.all(
-          (fi.eligibleHoldingTypeIds ?? []).map((htId) =>
-            api(`/holding-type-kernels/${htId}`).then((r) =>
-              r.ok ? (r.json() as Promise<{ id: string; name: string; category: string }>) : null
-            )
-          )
-        );
-        eligibleEnvelopes = htResults
-          .filter((ht): ht is { id: string; name: string; category: string } => ht !== null)
-          .map((ht) => ({ category: ht.category, name: ht.name }));
       }
     }
     marketingProduct = { ...p, shares };
