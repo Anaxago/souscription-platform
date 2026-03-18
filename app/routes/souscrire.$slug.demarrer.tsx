@@ -79,7 +79,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 
     const leKernelRes = await api("/legal-entity-kernels", {
       method: "POST",
-      body: JSON.stringify({ name: "Entreprise", siret: "00000000000000" }),
+      body: JSON.stringify({ name: "Entreprise", siret: "44444444444440" }),
     });
     if (!leKernelRes.ok) {
       const err = await leKernelRes.json().catch(() => ({}));
