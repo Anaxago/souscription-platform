@@ -209,7 +209,12 @@ export default function InvestorProfileStep({
             }
           }
         }
-        // All categories done — re-fetch journey to check if step auto-completed
+        // All categories done — complete the step then re-fetch
+        try {
+          await callAction({ type: "complete", journeyId, stepId });
+        } catch {
+          // Step might auto-complete from backend — ignore errors
+        }
         onComplete();
       } else {
         setCurrentCatIndex((i) => i + 1);
