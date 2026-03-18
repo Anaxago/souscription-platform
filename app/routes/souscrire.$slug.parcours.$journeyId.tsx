@@ -150,6 +150,7 @@ export async function loader({ params }: Route.LoaderArgs) {
     financialInstrumentId: string | null;
     shares: { id: string; name: string; minimumInvestmentInCents: number; minimumInvestmentCurrency: string }[];
   } | null = null;
+  let eligibleEnvelopes: { category: string; name: string }[] = [];
   const productRes = await api(`/marketing-products/${journey.marketingProductId}`);
   if (productRes.ok) {
     const p = (await productRes.json()) as {
@@ -158,19 +159,33 @@ export async function loader({ params }: Route.LoaderArgs) {
       minimumInvestmentCurrency: string;
       financialInstrumentId: string | null;
     };
-    // Fetch shares if product has a financial instrument
+    // Fetch shares and eligible holding types if product has a financial instrument
     let shares: { id: string; name: string; minimumInvestmentInCents: number; minimumInvestmentCurrency: string }[] = [];
     if (p.financialInstrumentId) {
       const fiRes = await api(`/financial-instruments/${p.financialInstrumentId}`);
       if (fiRes.ok) {
-        const fi = (await fiRes.json()) as { shares: { id: string; name: string; minimumInvestmentInCents: number; minimumInvestmentCurrency: string }[] };
+        const fi = (await fiRes.json()) as {
+          shares: { id: string; name: string; minimumInvestmentInCents: number; minimumInvestmentCurrency: string }[];
+          eligibleHoldingTypeIds: string[];
+        };
         shares = fi.shares ?? [];
+        // Fetch holding type kernels in parallel to get their categories
+        const htResults = await Promise.all(
+          (fi.eligibleHoldingTypeIds ?? []).map((htId) =>
+            api(`/holding-type-kernels/${htId}`).then((r) =>
+              r.ok ? (r.json() as Promise<{ id: string; name: string; category: string }>) : null
+            )
+          )
+        );
+        eligibleEnvelopes = htResults
+          .filter((ht): ht is { id: string; name: string; category: string } => ht !== null)
+          .map((ht) => ({ category: ht.category, name: ht.name }));
       }
     }
     marketingProduct = { ...p, shares };
   }
 
-  return { journey, slug, personKernelId, marketingProduct };
+  return { journey, slug, personKernelId, marketingProduct, eligibleEnvelopes };
 }
 
 export function meta({ data }: Route.MetaArgs) {
@@ -185,7 +200,7 @@ export function meta({ data }: Route.MetaArgs) {
    ────────────────────────────────────────────── */
 
 export default function ParcoursSouscription({ loaderData }: Route.ComponentProps) {
-  const { journey, slug, personKernelId, marketingProduct } = loaderData;
+  const { journey, slug, personKernelId, marketingProduct, eligibleEnvelopes } = loaderData;
   const revalidator = useRevalidator();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -283,7 +298,7 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
       return <ProductQuestionsStep journeyId={journey.id} stepId={step.id} config={step.config as { questions?: { questionId: string; questionLabel: string; choices: { answerId: string; label: string }[] }[] } | null} existingAnswers={journey.basket?.productQuestionAnswers ?? []} actionUrl={actionUrl} onComplete={onStepComplete} />;
     }
     if (step.stepType === "ENVELOPE_SELECTION") {
-      return <EnvelopeSelectionStep journeyId={journey.id} stepId={step.id} actionUrl={actionUrl} onComplete={onStepComplete} />;
+      return <EnvelopeSelectionStep journeyId={journey.id} stepId={step.id} eligibleEnvelopes={eligibleEnvelopes} actionUrl={actionUrl} onComplete={onStepComplete} />;
     }
     if (step.stepType === "DISMEMBERMENT_SELECTION") {
       return <DismembermentSelectionStep journeyId={journey.id} stepId={step.id} actionUrl={actionUrl} onComplete={onStepComplete} />;

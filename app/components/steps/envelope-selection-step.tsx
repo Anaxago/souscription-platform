@@ -1,18 +1,26 @@
 import { useState } from "react";
 
+interface EligibleEnvelope {
+  category: string;
+  name: string;
+}
+
 interface Props {
   journeyId: string;
   stepId: string;
+  eligibleEnvelopes: EligibleEnvelope[];
   actionUrl: string;
   onComplete: () => void;
 }
 
-const ENVELOPE_TYPES = [
-  { value: "ASSURANCE_VIE", label: "Assurance-vie", desc: "Contrat d'assurance-vie multisupport" },
-  { value: "PER", label: "PER", desc: "Plan d'Épargne Retraite" },
-  { value: "CTO", label: "Compte-titres", desc: "Compte-titres ordinaire" },
-  { value: "PEA", label: "PEA", desc: "Plan d'Épargne en Actions" },
-];
+const CATEGORY_LABELS: Record<string, { label: string; desc: string }> = {
+  AV: { label: "Assurance-vie", desc: "Contrat d'assurance-vie multisupport" },
+  PER: { label: "PER", desc: "Plan d'Épargne Retraite" },
+  CTO: { label: "Compte-titres", desc: "Compte-titres ordinaire" },
+  PEA: { label: "PEA", desc: "Plan d'Épargne en Actions" },
+  PEA_PME: { label: "PEA-PME", desc: "Plan d'Épargne en Actions PME" },
+  DIRECT_OWNERSHIP: { label: "Détention directe", desc: "Sans enveloppe fiscale" },
+};
 
 const TARGET_TYPES = [
   { value: "TO_CREATE", label: "Ouvrir un nouveau contrat" },
@@ -22,10 +30,17 @@ const TARGET_TYPES = [
 export default function EnvelopeSelectionStep({
   journeyId,
   stepId,
+  eligibleEnvelopes,
   actionUrl,
   onComplete,
 }: Props) {
-  const [envelopeType, setEnvelopeType] = useState("ASSURANCE_VIE");
+  const envelopeOptions = eligibleEnvelopes.map((e) => ({
+    value: e.category,
+    label: CATEGORY_LABELS[e.category]?.label ?? e.name,
+    desc: CATEGORY_LABELS[e.category]?.desc ?? e.name,
+  }));
+
+  const [envelopeType, setEnvelopeType] = useState(envelopeOptions[0]?.value ?? "");
   const [targetType, setTargetType] = useState("TO_CREATE");
   const [existingRef, setExistingRef] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -64,7 +79,7 @@ export default function EnvelopeSelectionStep({
     }
   }
 
-  const isValid = targetType === "TO_CREATE" || existingRef.trim().length > 0;
+  const isValid = envelopeType && (targetType === "TO_CREATE" || existingRef.trim().length > 0);
 
   return (
     <div className="step-panel">
@@ -88,7 +103,7 @@ export default function EnvelopeSelectionStep({
         <div>
           <label className="form-label">Type d'enveloppe</label>
           <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-xs)" }}>
-            {ENVELOPE_TYPES.map((opt) => (
+            {envelopeOptions.map((opt) => (
               <label key={opt.value} className="choice-card" style={{
                 borderColor: envelopeType === opt.value ? "var(--clr-primary)" : undefined,
                 background: envelopeType === opt.value ? "var(--clr-primary-light)" : undefined,
