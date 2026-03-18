@@ -5,6 +5,7 @@ interface Props {
   stepId: string;
   investorId: string;
   personKernelId: string;
+  investorType: string;
   requiredCategories: string[] | null;
   actionUrl: string;
   onComplete: () => void;
@@ -14,6 +15,7 @@ interface Question {
   id: string;
   version: number;
   category: string;
+  applicableTo: "INDIVIDUAL" | "LEGAL_ENTITY" | "BOTH";
   wording: string;
   type: "SINGLE_CHOICE" | "MULTIPLE_CHOICE";
   choices: { choiceId: string; label: string }[];
@@ -53,6 +55,7 @@ export default function InvestorProfileStep({
   stepId,
   investorId,
   personKernelId,
+  investorType,
   requiredCategories,
   actionUrl,
   onComplete,
@@ -85,10 +88,16 @@ export default function InvestorProfileStep({
         const questions = (result as { data: Question[] }).data ?? (result as Question[]);
         const qList = Array.isArray(questions) ? questions : [];
 
+        // Filter by applicableTo based on investor type
+        const applicableTarget = investorType === "LEGAL" ? "LEGAL_ENTITY" : "INDIVIDUAL";
+        const byApplicable = qList.filter(
+          (q) => q.applicableTo === applicableTarget || q.applicableTo === "BOTH"
+        );
+
         // Filter by required categories if specified
         const filtered = requiredCategories && requiredCategories.length > 0
-          ? qList.filter((q) => requiredCategories.includes(q.category))
-          : qList;
+          ? byApplicable.filter((q) => requiredCategories.includes(q.category))
+          : byApplicable;
 
         // Group by category and order
         const grouped = new Map<string, Question[]>();

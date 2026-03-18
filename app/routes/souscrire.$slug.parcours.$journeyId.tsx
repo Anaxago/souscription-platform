@@ -10,7 +10,7 @@ import EnvelopeSelectionStep from "~/components/steps/envelope-selection-step";
 import DismembermentSelectionStep from "~/components/steps/dismemberment-selection-step";
 import AdequacyCheckStep from "~/components/steps/adequacy-check-step";
 import DocumentUploadStep from "~/components/steps/document-upload-step";
-import LegalEntityProfileStep from "~/components/steps/legal-entity-profile-step";
+
 
 /* ──────────────────────────────────────────────
    Types
@@ -300,11 +300,8 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
     if (step.stepType === "USER_VERIFICATION" && personKernelId) {
       return <UserVerificationStep journeyId={journey.id} stepId={step.id} investorId={journey.investorId} personKernelId={personKernelId} investorType={journey.investorType} legalEntityKernelId={legalEntityKernelId} actionUrl={actionUrl} onComplete={onStepComplete} />;
     }
-    if (step.stepType === "INVESTOR_PROFILE" && journey.investorType === "LEGAL") {
-      return <LegalEntityProfileStep journeyId={journey.id} stepId={step.id} investorId={journey.investorId} actionUrl={actionUrl} onComplete={onStepComplete} />;
-    }
     if (step.stepType === "INVESTOR_PROFILE" && personKernelId) {
-      return <InvestorProfileStep journeyId={journey.id} stepId={step.id} investorId={journey.investorId} personKernelId={personKernelId} requiredCategories={(step.config as { requiredCategories?: string[] } | null)?.requiredCategories ?? null} actionUrl={actionUrl} onComplete={onStepComplete} />;
+      return <InvestorProfileStep journeyId={journey.id} stepId={step.id} investorId={journey.investorId} personKernelId={personKernelId} investorType={journey.investorType} requiredCategories={(step.config as { requiredCategories?: string[] } | null)?.requiredCategories ?? null} actionUrl={actionUrl} onComplete={onStepComplete} />;
     }
     if (step.stepType === "PRODUCT_SELECTION" && marketingProduct) {
       return <ProductSelectionStep journeyId={journey.id} stepId={step.id} minimumInvestmentInCents={marketingProduct.minimumInvestmentInCents} minimumInvestmentCurrency={marketingProduct.minimumInvestmentCurrency} productName={marketingProduct.name} financialInstrumentId={marketingProduct.financialInstrumentId} shares={marketingProduct.shares} existingLines={(journey.basket?.lines ?? []) as unknown as { lineType: string; financialInstrumentId: string | null; requestedAmount: number | null; requestedSecuritiesCount: number | null }[]} actionUrl={actionUrl} onComplete={onStepComplete} />;

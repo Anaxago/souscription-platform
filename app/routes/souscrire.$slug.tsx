@@ -222,8 +222,7 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
   const canSubscribe = product.status === "OPEN";
   const advantages = parseListItems(product.keyAdvantages);
   const disadvantages = parseListItems(product.keyDisadvantages);
-  const ctaHrefNatural = `/souscrire/${product.slug}/demarrer?type=NATURAL`;
-  const ctaHrefLegal = `/souscrire/${product.slug}/demarrer?type=LEGAL`;
+  const ctaHref = `/souscrire/${product.slug}/demarrer`;
   const minAmount =
     product.minimumInvestmentInCents != null
       ? formatCurrency(product.minimumInvestmentInCents, product.minimumInvestmentCurrency)
@@ -285,14 +284,9 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
             </p>
 
             {canSubscribe && (
-              <div style={{ display: "flex", gap: "var(--space-sm)", flexWrap: "wrap" }}>
-                <a href={ctaHrefNatural} className="btn-primary btn-primary--hero">
-                  Investir en nom propre
-                </a>
-                <a href={ctaHrefLegal} className="btn-primary btn-primary--hero" style={{ background: "transparent", border: "1.5px solid #fff", color: "#fff" }}>
-                  Investir en société
-                </a>
-              </div>
+              <a href={ctaHref} className="btn-primary btn-primary--hero">
+                Investir
+              </a>
             )}
           </div>
 
@@ -474,14 +468,9 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
               </div>
 
               {canSubscribe ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-xs)" }}>
-                  <a href={ctaHrefNatural} className="btn-primary" style={{ width: "100%", justifyContent: "center" }}>
-                    Investir en nom propre
-                  </a>
-                  <a href={ctaHrefLegal} className="btn-primary" style={{ width: "100%", justifyContent: "center", background: "transparent", border: "1.5px solid var(--clr-primary)", color: "var(--clr-primary)" }}>
-                    Investir en société
-                  </a>
-                </div>
+                <a href={ctaHref} className="btn-primary">
+                  Investir
+                </a>
               ) : (
                 <span
                   className="btn-primary"
@@ -558,11 +547,8 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
               <div className="mobile-sticky-bar__amount">Dès {minAmount}</div>
             )}
           </div>
-          <a href={ctaHrefNatural} className="btn-primary">
-            Nom propre
-          </a>
-          <a href={ctaHrefLegal} className="btn-primary" style={{ background: "transparent", border: "1.5px solid var(--clr-primary)", color: "var(--clr-primary)" }}>
-            Société
+          <a href={ctaHref} className="btn-primary">
+            Investir
           </a>
         </div>
       )}

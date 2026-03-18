@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { data, redirect } from "react-router";
 import type { Route } from "./+types/souscrire.$slug.demarrer";
 import { api } from "~/lib/api.server";
@@ -35,28 +36,37 @@ async function findIssuanceOperationId(productId: string): Promise<string | unde
   return undefined;
 }
 
-function errorPage(message: string, slug: string) {
-  return { error: message, slug };
+/* ──────────────────────────────────────────────
+   Loader — fetch product for display
+   ────────────────────────────────────────────── */
+
+export async function loader({ params }: Route.LoaderArgs) {
+  const { slug } = params;
+
+  const productRes = await api(`/marketing-products/by-slug/${slug}`);
+  if (!productRes.ok) throw data(null, { status: 404 });
+  const product = (await productRes.json()) as MarketingProduct;
+  if (product.status !== "OPEN") throw data(null, { status: 403 });
+
+  return { product, slug };
+}
+
+export function meta() {
+  return [{ title: "Démarrage de la souscription — Anaxago" }];
 }
 
 /* ──────────────────────────────────────────────
-   Loader — creates entities based on ?type= query param and redirects
+   Action — create entities based on investor type, then redirect
    ────────────────────────────────────────────── */
 
-export async function loader({ params, request }: Route.LoaderArgs) {
+export async function action({ request, params }: Route.ActionArgs) {
   const { slug } = params;
-  const url = new URL(request.url);
-  const investorType = url.searchParams.get("type") ?? "NATURAL";
+  const formData = await request.formData();
+  const investorType = formData.get("investorType") as string;
 
-  // Fetch product
   const productRes = await api(`/marketing-products/by-slug/${slug}`);
-  if (!productRes.ok) {
-    throw data(null, { status: 404 });
-  }
+  if (!productRes.ok) throw data(null, { status: 404 });
   const product = (await productRes.json()) as MarketingProduct;
-  if (product.status !== "OPEN") {
-    throw data(null, { status: 403 });
-  }
 
   if (investorType === "LEGAL") {
     // ── Legal entity flow ──
@@ -64,21 +74,21 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       method: "POST",
       body: JSON.stringify({ firstName: "Représentant", lastName: "Légal" }),
     });
-    if (!kernelRes.ok) return errorPage("Erreur lors de la création du profil opérateur.", slug);
+    if (!kernelRes.ok) return { error: "Erreur lors de la création du profil opérateur.", product, slug };
     const kernel = (await kernelRes.json()) as { id: string };
 
     const leKernelRes = await api("/legal-entity-kernels", {
       method: "POST",
       body: JSON.stringify({ name: "Entreprise", siret: "00000000000000" }),
     });
-    if (!leKernelRes.ok) return errorPage("Erreur lors de la création du profil société.", slug);
+    if (!leKernelRes.ok) return { error: "Erreur lors de la création du profil société.", product, slug };
     const leKernel = (await leKernelRes.json()) as { id: string };
 
     const investorRes = await api("/legal-entity-investors", {
       method: "POST",
       body: JSON.stringify({ legalEntityKernelId: leKernel.id, operatedBy: kernel.id }),
     });
-    if (!investorRes.ok) return errorPage("Erreur lors de la création de l'investisseur.", slug);
+    if (!investorRes.ok) return { error: "Erreur lors de la création de l'investisseur.", product, slug };
     const investor = (await investorRes.json()) as { id: string };
 
     const issuanceOperationId = await findIssuanceOperationId(product.id);
@@ -97,10 +107,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       const userMessage = rawMessage.includes("Cannot read") || rawMessage.includes("Internal")
         ? "Une erreur technique est survenue. Veuillez réessayer."
         : rawMessage || "Erreur lors du démarrage du parcours.";
-      return errorPage(userMessage, slug);
+      return { error: userMessage, product, slug };
     }
     const journey = (await journeyRes.json()) as { id: string };
-
     throw redirect(`/souscrire/${slug}/parcours/${journey.id}`);
   }
 
@@ -109,14 +118,14 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     method: "POST",
     body: JSON.stringify({ firstName: "Investisseur", lastName: "Anonyme" }),
   });
-  if (!kernelRes.ok) return errorPage("Erreur lors de la création du profil.", slug);
+  if (!kernelRes.ok) return { error: "Erreur lors de la création du profil.", product, slug };
   const kernel = (await kernelRes.json()) as { id: string };
 
   const investorRes = await api("/individual-investors", {
     method: "POST",
     body: JSON.stringify({ personKernelId: kernel.id }),
   });
-  if (!investorRes.ok) return errorPage("Erreur lors de la création de l'investisseur.", slug);
+  if (!investorRes.ok) return { error: "Erreur lors de la création de l'investisseur.", product, slug };
   const investor = (await investorRes.json()) as { id: string };
 
   const issuanceOperationId = await findIssuanceOperationId(product.id);
@@ -135,28 +144,25 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     const userMessage = rawMessage.includes("Cannot read") || rawMessage.includes("Internal")
       ? "Une erreur technique est survenue. Veuillez réessayer."
       : rawMessage || "Erreur lors du démarrage du parcours.";
-    return errorPage(userMessage, slug);
+    return { error: userMessage, product, slug };
   }
   const journey = (await journeyRes.json()) as { id: string };
-
-  const verifyRes = await api(`/subscription-journeys/${journey.id}`);
-  if (!verifyRes.ok) {
-    return errorPage("Le parcours n'est pas accessible. Le template est peut-être mal configuré.", slug);
-  }
-
   throw redirect(`/souscrire/${slug}/parcours/${journey.id}`);
 }
 
-export function meta() {
-  return [{ title: "Démarrage de la souscription — Anaxago" }];
-}
-
 /* ──────────────────────────────────────────────
-   Component — only shown if there's an error
+   Component — investor type selection
    ────────────────────────────────────────────── */
 
-export default function DemarrerSouscription({ loaderData }: Route.ComponentProps) {
-  const { error: errorMessage, slug } = loaderData as { error?: string; slug?: string };
+export default function DemarrerSouscription({ loaderData, actionData }: Route.ComponentProps) {
+  const loaderResult = loaderData as { product: MarketingProduct; slug: string };
+  const actionResult = actionData as { error?: string; product?: MarketingProduct; slug?: string } | undefined;
+  const product = actionResult?.product ?? loaderResult.product;
+  const slug = actionResult?.slug ?? loaderResult.slug;
+  const errorMessage = actionResult?.error;
+
+  const [investorType, setInvestorType] = useState("NATURAL");
+  const [submitting, setSubmitting] = useState(false);
 
   return (
     <div className="ds4-body">
@@ -165,36 +171,68 @@ export default function DemarrerSouscription({ loaderData }: Route.ComponentProp
       </nav>
 
       <main style={{ paddingTop: 100 }}>
-        <div style={{ maxWidth: 520, margin: "0 auto", padding: "var(--space-xl)", textAlign: "center" }}>
-          {errorMessage ? (
-            <>
-              <div style={{
-                width: 56, height: 56, borderRadius: "50%",
-                background: "rgba(192, 57, 43, 0.1)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                margin: "0 auto var(--space-md)",
-              }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#c0392b" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="8" x2="12" y2="12" />
-                  <line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
-              </div>
-              <h1 style={{ fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 300, color: "var(--clr-obsidian)", marginBottom: "var(--space-sm)" }}>
-                Erreur de démarrage
-              </h1>
-              <p style={{ fontSize: 15, color: "var(--clr-cashmere)", marginBottom: "var(--space-lg)" }}>
-                {errorMessage}
-              </p>
-              <a href={`/souscrire/${slug ?? ""}`} className="btn-primary" style={{ display: "inline-flex" }}>
-                Retour au produit
-              </a>
-            </>
-          ) : (
-            <p style={{ color: "var(--clr-cashmere)" }}>
-              Création de votre parcours en cours...
+        <div style={{ maxWidth: 560, margin: "0 auto", padding: "var(--space-xl)" }}>
+          <div style={{ textAlign: "center", marginBottom: "var(--space-xl)" }}>
+            <h1 style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 300, color: "var(--clr-obsidian)", marginBottom: "var(--space-xs)" }}>
+              Souscrire à {product.name}
+            </h1>
+            <p style={{ fontSize: 15, color: "var(--clr-cashmere)" }}>
+              Comment souhaitez-vous investir ?
             </p>
+          </div>
+
+          {errorMessage && (
+            <div className="form-error" style={{ marginBottom: "var(--space-md)", textAlign: "center" }}>{errorMessage}</div>
           )}
+
+          <form method="post" onSubmit={() => setSubmitting(true)}>
+            <input type="hidden" name="investorType" value={investorType} />
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)", marginBottom: "var(--space-lg)" }}>
+              <label className="choice-card" style={{
+                borderColor: investorType === "NATURAL" ? "var(--clr-primary)" : undefined,
+                background: investorType === "NATURAL" ? "var(--clr-primary-light)" : undefined,
+              }}>
+                <input type="radio" name="investorTypeRadio" checked={investorType === "NATURAL"} onChange={() => setInvestorType("NATURAL")} style={{ display: "none" }} />
+                <span className="choice-card__radio">
+                  {investorType === "NATURAL" && <span className="choice-card__radio-dot" />}
+                </span>
+                <div style={{ flex: 1 }}>
+                  <span className="choice-card__label">Personne physique</span>
+                  <span className="choice-card__desc">Investir en tant que particulier</span>
+                </div>
+              </label>
+
+              <label className="choice-card" style={{
+                borderColor: investorType === "LEGAL" ? "var(--clr-primary)" : undefined,
+                background: investorType === "LEGAL" ? "var(--clr-primary-light)" : undefined,
+              }}>
+                <input type="radio" name="investorTypeRadio" checked={investorType === "LEGAL"} onChange={() => setInvestorType("LEGAL")} style={{ display: "none" }} />
+                <span className="choice-card__radio">
+                  {investorType === "LEGAL" && <span className="choice-card__radio-dot" />}
+                </span>
+                <div style={{ flex: 1 }}>
+                  <span className="choice-card__label">Personne morale</span>
+                  <span className="choice-card__desc">Investir au nom d'une société</span>
+                </div>
+              </label>
+            </div>
+
+            <button
+              type="submit"
+              className="btn-primary"
+              style={{ width: "100%", justifyContent: "center", opacity: submitting ? 0.5 : 1 }}
+              disabled={submitting}
+            >
+              {submitting ? "Création du parcours..." : "Continuer"}
+            </button>
+          </form>
+
+          <div style={{ textAlign: "center", marginTop: "var(--space-md)" }}>
+            <a href={`/souscrire/${slug}`} style={{ fontSize: 14, color: "var(--clr-cashmere)" }}>
+              ← Retour au produit
+            </a>
+          </div>
         </div>
       </main>
     </div>
