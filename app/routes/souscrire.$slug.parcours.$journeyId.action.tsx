@@ -11,7 +11,7 @@ type ActionPayload =
   | { type: "register-document"; verificationId: string; docType: string; storageRef: string; investorId: string }
   | { type: "complete-verification"; journeyId: string; stepId: string }
   | { type: "fetch-assessment-questions" }
-  | { type: "submit-assessment-category"; investorId: string; personKernelId: string; category: string; answers: { questionId: string; questionVersion: number; questionWordingSnapshot: string; answerValue: string | string[] }[] }
+  | { type: "submit-assessment-category"; investorId: string; personKernelId: string; investorType: string; category: string; answers: { questionId: string; questionVersion: number; questionWordingSnapshot: string; answerValue: string | string[] }[] }
   | { type: "answer-product-questions"; journeyId: string; answers: { questionId: string; questionLabel: string; answerId: string; snapshotted: boolean }[] }
   | { type: "add-basket-line"; journeyId: string; lineType: string; financialInstrumentId: string | null; shareId: string | null; requestedAmount: number }
   | { type: "set-envelope-target"; journeyId: string; targetType: string; envelopeType: string; existingEnvelopeRef?: string }
@@ -328,7 +328,7 @@ export async function action({ request }: Route.ActionArgs) {
         method: "POST",
         body: JSON.stringify({
           investorId: body.investorId,
-          investorType: "INDIVIDUAL",
+          investorType: body.investorType === "LEGAL" ? "LEGAL_ENTITY" : "INDIVIDUAL",
           category: body.category,
           initiatedBy: body.personKernelId,
           initiatedByRole: "CLIENT",

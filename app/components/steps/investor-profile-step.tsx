@@ -179,6 +179,7 @@ export default function InvestorProfileStep({
         type: "submit-assessment-category",
         investorId,
         personKernelId,
+        investorType,
         category: currentCat.category,
         answers: currentCat.questions.map((q) => ({
           questionId: q.id,
@@ -199,6 +200,7 @@ export default function InvestorProfileStep({
                 type: "submit-assessment-category",
                 investorId,
                 personKernelId,
+                investorType,
                 category: cat,
                 answers: [],
               });
