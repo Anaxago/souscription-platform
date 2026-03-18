@@ -42,8 +42,29 @@ async function findIssuanceOperationId(productId: string): Promise<string | unde
   return undefined;
 }
 
+async function findOrCreateLeKernel(siret: string): Promise<{ id: string; name: string } | null> {
+  // Search existing kernels by SIRET
+  try {
+    const res = await api("/legal-entity-kernels?pageSize=100");
+    if (res.ok) {
+      const body = (await res.json()) as { data: LegalEntityKernel[] };
+      const match = (body.data ?? []).find((k) => k.siret === siret);
+      if (match) return { id: match.id, name: match.name };
+    }
+  } catch { /* */ }
+
+  // Not found — create new
+  const res = await api("/legal-entity-kernels", {
+    method: "POST",
+    body: JSON.stringify({ name: "Entreprise", siret }),
+  });
+  if (!res.ok) return null;
+  const kernel = (await res.json()) as { id: string; name: string };
+  return { id: kernel.id, name: kernel.name };
+}
+
 /* ──────────────────────────────────────────────
-   Loader — fetch product + existing legal entity kernels
+   Loader
    ────────────────────────────────────────────── */
 
 export async function loader({ params }: Route.LoaderArgs) {
@@ -54,19 +75,7 @@ export async function loader({ params }: Route.LoaderArgs) {
   const product = (await productRes.json()) as MarketingProduct;
   if (product.status !== "OPEN") throw data(null, { status: 403 });
 
-  // Fetch existing legal entity kernels
-  let legalEntityKernels: LegalEntityKernel[] = [];
-  try {
-    const res = await api("/legal-entity-kernels?pageSize=100");
-    if (res.ok) {
-      const body = (await res.json()) as { data: LegalEntityKernel[] };
-      legalEntityKernels = body.data ?? [];
-    }
-  } catch {
-    // Non-blocking
-  }
-
-  return { product, slug, legalEntityKernels };
+  return { product, slug };
 }
 
 export function meta() {
@@ -74,74 +83,46 @@ export function meta() {
 }
 
 /* ──────────────────────────────────────────────
-   Action — create entities based on investor type, then redirect
+   Action
    ────────────────────────────────────────────── */
 
 export async function action({ request, params }: Route.ActionArgs) {
   const { slug } = params;
   const formData = await request.formData();
   const investorType = formData.get("investorType") as string;
-  const leKernelMode = formData.get("leKernelMode") as string; // "existing" or "new"
-  const existingLeKernelId = formData.get("existingLeKernelId") as string;
-  const newCompanyName = formData.get("newCompanyName") as string;
-  const newCompanySiret = formData.get("newCompanySiret") as string;
+  const siret = (formData.get("siret") as string)?.trim();
 
   const productRes = await api(`/marketing-products/by-slug/${slug}`);
   if (!productRes.ok) throw data(null, { status: 404 });
   const product = (await productRes.json()) as MarketingProduct;
 
-  // Fetch kernels for re-render on error
-  let legalEntityKernels: LegalEntityKernel[] = [];
-  try {
-    const res = await api("/legal-entity-kernels?pageSize=100");
-    if (res.ok) {
-      const body = (await res.json()) as { data: LegalEntityKernel[] };
-      legalEntityKernels = body.data ?? [];
-    }
-  } catch { /* */ }
-
-  const errorData = { product, slug, legalEntityKernels };
+  const errorData = { product, slug };
 
   if (investorType === "LEGAL") {
-    // ── Legal entity flow ──
+    if (!siret || siret.length !== 14) {
+      return { error: "Veuillez saisir un SIRET valide (14 chiffres).", ...errorData };
+    }
+
     // 1. PersonKernel for operator
     const kernelRes = await api("/person-kernels", {
       method: "POST",
       body: JSON.stringify({ firstName: "Représentant", lastName: "Légal" }),
     });
-    if (!kernelRes.ok) return { error: "Erreur lors de la création du profil opérateur.", ...errorData };
+    if (!kernelRes.ok) return { error: "Erreur lors de la création du profil.", ...errorData };
     const kernel = (await kernelRes.json()) as { id: string };
 
-    // 2. Get or create LegalEntityKernel
-    let leKernelId: string;
-    if (leKernelMode === "existing" && existingLeKernelId) {
-      leKernelId = existingLeKernelId;
-    } else {
-      if (!newCompanyName?.trim() || !newCompanySiret?.trim()) {
-        return { error: "Veuillez renseigner le nom et le SIRET de la société.", ...errorData };
-      }
-      const leKernelRes = await api("/legal-entity-kernels", {
-        method: "POST",
-        body: JSON.stringify({ name: newCompanyName.trim(), siret: newCompanySiret.trim() }),
-      });
-      if (!leKernelRes.ok) {
-        const err = await leKernelRes.json().catch(() => ({}));
-        const msg = (err as Record<string, string>).message ?? `Erreur ${leKernelRes.status}`;
-        return { error: `Erreur création société : ${msg}`, ...errorData };
-      }
-      const leKernel = (await leKernelRes.json()) as { id: string };
-      leKernelId = leKernel.id;
-    }
+    // 2. Find or create LegalEntityKernel by SIRET
+    const leKernel = await findOrCreateLeKernel(siret);
+    if (!leKernel) return { error: "Erreur lors de la création de la société. Vérifiez le SIRET.", ...errorData };
 
     // 3. Create LegalEntityInvestor
     const investorRes = await api("/legal-entity-investors", {
       method: "POST",
-      body: JSON.stringify({ legalEntityKernelId: leKernelId, operatedBy: kernel.id }),
+      body: JSON.stringify({ legalEntityKernelId: leKernel.id, operatedBy: kernel.id }),
     });
     if (!investorRes.ok) {
       const err = await investorRes.json().catch(() => ({}));
-      const msg = (err as Record<string, string>).message ?? `Erreur ${investorRes.status}`;
-      return { error: `Erreur création investisseur : ${msg}`, ...errorData };
+      return { error: (err as Record<string, string>).message ?? "Erreur création investisseur.", ...errorData };
     }
     const investor = (await investorRes.json()) as { id: string };
 
@@ -168,7 +149,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     throw redirect(`/souscrire/${slug}/parcours/${journey.id}`);
   }
 
-  // ── Individual flow (default) ──
+  // ── Individual flow ──
   const kernelRes = await api("/person-kernels", {
     method: "POST",
     body: JSON.stringify({ firstName: "Investisseur", lastName: "Anonyme" }),
@@ -206,27 +187,22 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 /* ──────────────────────────────────────────────
-   Component — investor type + legal entity selection
+   Component
    ────────────────────────────────────────────── */
 
 export default function DemarrerSouscription({ loaderData, actionData }: Route.ComponentProps) {
-  const loaderResult = loaderData as { product: MarketingProduct; slug: string; legalEntityKernels: LegalEntityKernel[] };
-  const actionResult = actionData as { error?: string; product?: MarketingProduct; slug?: string; legalEntityKernels?: LegalEntityKernel[] } | undefined;
+  const loaderResult = loaderData as { product: MarketingProduct; slug: string };
+  const actionResult = actionData as { error?: string; product?: MarketingProduct; slug?: string } | undefined;
   const product = actionResult?.product ?? loaderResult.product;
   const slug = actionResult?.slug ?? loaderResult.slug;
-  const legalEntityKernels = actionResult?.legalEntityKernels ?? loaderResult.legalEntityKernels;
   const errorMessage = actionResult?.error;
 
   const [investorType, setInvestorType] = useState("NATURAL");
-  const [leKernelMode, setLeKernelMode] = useState(legalEntityKernels.length > 0 ? "existing" : "new");
-  const [selectedLeKernelId, setSelectedLeKernelId] = useState(legalEntityKernels[0]?.id ?? "");
-  const [newName, setNewName] = useState("");
-  const [newSiret, setNewSiret] = useState("");
+  const [siret, setSiret] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const isLegal = investorType === "LEGAL";
-  const isNewMode = leKernelMode === "new";
-  const canSubmit = !isLegal || (isNewMode ? newName.trim() && newSiret.trim() : selectedLeKernelId);
+  const canSubmit = !isLegal || siret.replace(/\s/g, "").length === 14;
 
   return (
     <div className="ds4-body">
@@ -251,12 +227,8 @@ export default function DemarrerSouscription({ loaderData, actionData }: Route.C
 
           <form method="post" onSubmit={() => setSubmitting(true)}>
             <input type="hidden" name="investorType" value={investorType} />
-            <input type="hidden" name="leKernelMode" value={leKernelMode} />
-            <input type="hidden" name="existingLeKernelId" value={selectedLeKernelId} />
-            <input type="hidden" name="newCompanyName" value={newName} />
-            <input type="hidden" name="newCompanySiret" value={newSiret} />
+            <input type="hidden" name="siret" value={siret.replace(/\s/g, "")} />
 
-            {/* ── Investor type choice ── */}
             <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)", marginBottom: "var(--space-lg)" }}>
               <label className="choice-card" style={{
                 borderColor: investorType === "NATURAL" ? "var(--clr-primary)" : undefined,
@@ -273,12 +245,12 @@ export default function DemarrerSouscription({ loaderData, actionData }: Route.C
               </label>
 
               <label className="choice-card" style={{
-                borderColor: investorType === "LEGAL" ? "var(--clr-primary)" : undefined,
-                background: investorType === "LEGAL" ? "var(--clr-primary-light)" : undefined,
+                borderColor: isLegal ? "var(--clr-primary)" : undefined,
+                background: isLegal ? "var(--clr-primary-light)" : undefined,
               }}>
-                <input type="radio" name="investorTypeRadio" checked={investorType === "LEGAL"} onChange={() => setInvestorType("LEGAL")} style={{ display: "none" }} />
+                <input type="radio" name="investorTypeRadio" checked={isLegal} onChange={() => setInvestorType("LEGAL")} style={{ display: "none" }} />
                 <span className="choice-card__radio">
-                  {investorType === "LEGAL" && <span className="choice-card__radio-dot" />}
+                  {isLegal && <span className="choice-card__radio-dot" />}
                 </span>
                 <div style={{ flex: 1 }}>
                   <span className="choice-card__label">Personne morale</span>
@@ -287,63 +259,21 @@ export default function DemarrerSouscription({ loaderData, actionData }: Route.C
               </label>
             </div>
 
-            {/* ── Legal entity selection (only when LEGAL) ── */}
             {isLegal && (
-              <div style={{ marginBottom: "var(--space-lg)", display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
-                {/* Mode toggle */}
-                <div style={{ display: "flex", gap: "var(--space-sm)" }}>
-                  {legalEntityKernels.length > 0 && (
-                    <button type="button" className="choice-card" style={{
-                      flex: 1, cursor: "pointer", textAlign: "center",
-                      borderColor: !isNewMode ? "var(--clr-primary)" : undefined,
-                      background: !isNewMode ? "var(--clr-primary-light)" : undefined,
-                    }} onClick={() => setLeKernelMode("existing")}>
-                      <span className="choice-card__label">Société existante</span>
-                    </button>
-                  )}
-                  <button type="button" className="choice-card" style={{
-                    flex: 1, cursor: "pointer", textAlign: "center",
-                    borderColor: isNewMode ? "var(--clr-primary)" : undefined,
-                    background: isNewMode ? "var(--clr-primary-light)" : undefined,
-                  }} onClick={() => setLeKernelMode("new")}>
-                    <span className="choice-card__label">Nouvelle société</span>
-                  </button>
-                </div>
-
-                {/* Existing: select from list */}
-                {!isNewMode && legalEntityKernels.length > 0 && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-xs)" }}>
-                    {legalEntityKernels.map((le) => (
-                      <label key={le.id} className="choice-card" style={{
-                        borderColor: selectedLeKernelId === le.id ? "var(--clr-primary)" : undefined,
-                        background: selectedLeKernelId === le.id ? "var(--clr-primary-light)" : undefined,
-                      }}>
-                        <input type="radio" name="leKernelRadio" checked={selectedLeKernelId === le.id} onChange={() => setSelectedLeKernelId(le.id)} style={{ display: "none" }} />
-                        <span className="choice-card__radio">
-                          {selectedLeKernelId === le.id && <span className="choice-card__radio-dot" />}
-                        </span>
-                        <div style={{ flex: 1 }}>
-                          <span className="choice-card__label">{le.name}</span>
-                          <span className="choice-card__desc">SIRET : {le.siret}</span>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                )}
-
-                {/* New: name + SIRET fields */}
-                {isNewMode && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
-                    <div>
-                      <label className="form-label" htmlFor="new-company-name">Nom de la société *</label>
-                      <input id="new-company-name" className="form-input" placeholder="Ma Société SAS" value={newName} onChange={(e) => setNewName(e.target.value)} />
-                    </div>
-                    <div>
-                      <label className="form-label" htmlFor="new-company-siret">SIRET *</label>
-                      <input id="new-company-siret" className="form-input" placeholder="123 456 789 00012" maxLength={14} value={newSiret} onChange={(e) => setNewSiret(e.target.value.replace(/\s/g, ""))} />
-                    </div>
-                  </div>
-                )}
+              <div style={{ marginBottom: "var(--space-lg)" }}>
+                <label className="form-label" htmlFor="siret-input">Numéro SIRET de la société *</label>
+                <input
+                  id="siret-input"
+                  className="form-input"
+                  placeholder="123 456 789 00012"
+                  maxLength={17}
+                  value={siret}
+                  onChange={(e) => setSiret(e.target.value)}
+                  autoFocus
+                />
+                <p style={{ fontSize: 12, color: "var(--clr-cashmere)", marginTop: 4 }}>
+                  14 chiffres — si la société existe déjà, elle sera automatiquement rattachée.
+                </p>
               </div>
             )}
 
