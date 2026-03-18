@@ -10,6 +10,7 @@ import EnvelopeSelectionStep from "~/components/steps/envelope-selection-step";
 import DismembermentSelectionStep from "~/components/steps/dismemberment-selection-step";
 import AdequacyCheckStep from "~/components/steps/adequacy-check-step";
 import DocumentUploadStep from "~/components/steps/document-upload-step";
+import LegalEntityProfileStep from "~/components/steps/legal-entity-profile-step";
 
 /* ──────────────────────────────────────────────
    Types
@@ -136,10 +137,21 @@ export async function loader({ params }: Route.LoaderArgs) {
 
   // Fetch investor to get personKernelId (needed for KYC)
   let personKernelId: string | null = null;
-  const investorRes = await api(`/individual-investors/${journey.investorId}`);
-  if (investorRes.ok) {
-    const investor = (await investorRes.json()) as { personKernelId: string };
-    personKernelId = investor.personKernelId;
+  let legalEntityKernelId: string | null = null;
+
+  if (journey.investorType === "LEGAL") {
+    const investorRes = await api(`/legal-entity-investors/${journey.investorId}`);
+    if (investorRes.ok) {
+      const investor = (await investorRes.json()) as { legalEntityKernelId: string; operatedBy: string };
+      legalEntityKernelId = investor.legalEntityKernelId;
+      personKernelId = investor.operatedBy; // operator's person kernel ID
+    }
+  } else {
+    const investorRes = await api(`/individual-investors/${journey.investorId}`);
+    if (investorRes.ok) {
+      const investor = (await investorRes.json()) as { personKernelId: string };
+      personKernelId = investor.personKernelId;
+    }
   }
 
   // Fetch marketing product for product selection step
@@ -185,7 +197,7 @@ export async function loader({ params }: Route.LoaderArgs) {
     marketingProduct = { ...p, shares };
   }
 
-  return { journey, slug, personKernelId, marketingProduct, eligibleEnvelopes };
+  return { journey, slug, personKernelId, legalEntityKernelId, marketingProduct, eligibleEnvelopes };
 }
 
 export function meta({ data }: Route.MetaArgs) {
@@ -200,7 +212,7 @@ export function meta({ data }: Route.MetaArgs) {
    ────────────────────────────────────────────── */
 
 export default function ParcoursSouscription({ loaderData }: Route.ComponentProps) {
-  const { journey, slug, personKernelId, marketingProduct, eligibleEnvelopes } = loaderData;
+  const { journey, slug, personKernelId, legalEntityKernelId, marketingProduct, eligibleEnvelopes } = loaderData;
   const revalidator = useRevalidator();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -286,7 +298,10 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
 
   function renderStepPanel(step: JourneyStep) {
     if (step.stepType === "USER_VERIFICATION" && personKernelId) {
-      return <UserVerificationStep journeyId={journey.id} stepId={step.id} investorId={journey.investorId} personKernelId={personKernelId} actionUrl={actionUrl} onComplete={onStepComplete} />;
+      return <UserVerificationStep journeyId={journey.id} stepId={step.id} investorId={journey.investorId} personKernelId={personKernelId} investorType={journey.investorType} legalEntityKernelId={legalEntityKernelId} actionUrl={actionUrl} onComplete={onStepComplete} />;
+    }
+    if (step.stepType === "INVESTOR_PROFILE" && journey.investorType === "LEGAL") {
+      return <LegalEntityProfileStep journeyId={journey.id} stepId={step.id} investorId={journey.investorId} actionUrl={actionUrl} onComplete={onStepComplete} />;
     }
     if (step.stepType === "INVESTOR_PROFILE" && personKernelId) {
       return <InvestorProfileStep journeyId={journey.id} stepId={step.id} investorId={journey.investorId} personKernelId={personKernelId} requiredCategories={(step.config as { requiredCategories?: string[] } | null)?.requiredCategories ?? null} actionUrl={actionUrl} onComplete={onStepComplete} />;

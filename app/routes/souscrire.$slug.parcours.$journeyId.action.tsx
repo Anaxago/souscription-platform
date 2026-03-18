@@ -21,7 +21,14 @@ type ActionPayload =
   | { type: "upload-journey-document"; journeyId: string; stepId: string; documentType: string; documentId: string; fileName: string }
   | { type: "update-person-kernel"; personKernelId: string; firstName: string; lastName: string }
   | { type: "create-person"; personKernelId: string; firstName: string; lastName: string; birthDate: string; nationality: string; address: { street: string; city: string; postalCode: string; country: string } }
-  | { type: "create-account"; personId: string; email: string; phone: string };
+  | { type: "create-account"; personId: string; email: string; phone: string }
+  | { type: "update-legal-entity-kernel"; legalEntityKernelId: string; name: string; siret: string }
+  | { type: "create-legal-entity"; name: string; siret: string; legalForm: string; registeredAddress: { street: string; street2?: string; city: string; postalCode: string; country: string }; legalEntityKernelId: string }
+  | { type: "add-company-role"; legalEntityId: string; personId: string; roleType: string; since: string; ownershipPercentage?: number; votingPercentage?: number }
+  | { type: "update-le-investor-profile"; investorId: string; riskTolerance: string; horizon: string; knowledgeLevel: string }
+  | { type: "declare-source-of-funds"; investorId: string; origin: string; declaredAmountCents?: number; declaredAmountCurrency?: string }
+  | { type: "remove-source-of-funds"; investorId: string; origin: string }
+  | { type: "activate-le-investor"; investorId: string };
 
 function errorResponse(message: string, status: number) {
   return Response.json({ error: message }, { status });
@@ -450,6 +457,117 @@ export async function action({ request }: Route.ActionArgs) {
           return Response.json({ ok: true });
         }
         return errorResponse((err as Record<string, string>).message ?? "Erreur création compte", res.status);
+      }
+      return Response.json(await res.json());
+    }
+
+    /* ── Update Legal Entity Kernel ── */
+    case "update-legal-entity-kernel": {
+      const res = await api(`/legal-entity-kernels/${body.legalEntityKernelId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ name: body.name, siret: body.siret }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return errorResponse((err as Record<string, string>).message ?? "Erreur mise à jour kernel PM", res.status);
+      }
+      return Response.json(await res.json());
+    }
+
+    /* ── Create Legal Entity ── */
+    case "create-legal-entity": {
+      const res = await api("/legal-entities", {
+        method: "POST",
+        body: JSON.stringify({
+          name: body.name,
+          siret: body.siret,
+          legalForm: body.legalForm,
+          registeredAddress: body.registeredAddress,
+          legalEntityKernelId: body.legalEntityKernelId,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        if (res.status === 409) return Response.json({ ok: true, ...(err as Record<string, unknown>) });
+        return errorResponse((err as Record<string, string>).message ?? "Erreur création entité légale", res.status);
+      }
+      return Response.json(await res.json());
+    }
+
+    /* ── Add Company Role ── */
+    case "add-company-role": {
+      const res = await api(`/legal-entities/${body.legalEntityId}/company-roles`, {
+        method: "POST",
+        body: JSON.stringify({
+          personId: body.personId,
+          roleType: body.roleType,
+          since: body.since,
+          ...(body.ownershipPercentage !== undefined ? { ownershipPercentage: body.ownershipPercentage } : {}),
+          ...(body.votingPercentage !== undefined ? { votingPercentage: body.votingPercentage } : {}),
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return errorResponse((err as Record<string, string>).message ?? "Erreur ajout rôle", res.status);
+      }
+      return Response.json(await res.json());
+    }
+
+    /* ── Update Legal Entity Investor Profile ── */
+    case "update-le-investor-profile": {
+      const res = await api(`/legal-entity-investors/${body.investorId}/profile`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          riskTolerance: body.riskTolerance,
+          horizon: body.horizon,
+          knowledgeLevel: body.knowledgeLevel,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return errorResponse((err as Record<string, string>).message ?? "Erreur mise à jour profil PM", res.status);
+      }
+      return Response.json(await res.json());
+    }
+
+    /* ── Declare Source of Funds ── */
+    case "declare-source-of-funds": {
+      const res = await api(`/legal-entity-investors/${body.investorId}/sources-of-funds`, {
+        method: "POST",
+        body: JSON.stringify({
+          origin: body.origin,
+          ...(body.declaredAmountCents !== undefined ? { declaredAmountCents: body.declaredAmountCents } : {}),
+          ...(body.declaredAmountCurrency ? { declaredAmountCurrency: body.declaredAmountCurrency } : {}),
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        if (res.status === 409) return Response.json({ ok: true });
+        return errorResponse((err as Record<string, string>).message ?? "Erreur déclaration source de fonds", res.status);
+      }
+      return Response.json(await res.json());
+    }
+
+    /* ── Remove Source of Funds ── */
+    case "remove-source-of-funds": {
+      const res = await api(`/legal-entity-investors/${body.investorId}/sources-of-funds/${body.origin}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return errorResponse((err as Record<string, string>).message ?? "Erreur suppression source de fonds", res.status);
+      }
+      return Response.json(await res.json());
+    }
+
+    /* ── Activate Legal Entity Investor ── */
+    case "activate-le-investor": {
+      const res = await api(`/legal-entity-investors/${body.investorId}/activate`, {
+        method: "PATCH",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return errorResponse((err as Record<string, string>).message ?? "Erreur activation investisseur PM", res.status);
       }
       return Response.json(await res.json());
     }

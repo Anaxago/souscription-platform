@@ -5,6 +5,8 @@ interface Props {
   stepId: string;
   investorId: string;
   personKernelId: string;
+  investorType: string;
+  legalEntityKernelId: string | null;
   actionUrl: string;
   onComplete: () => void;
 }
@@ -33,15 +35,32 @@ const NATIONALITIES = [
   { code: "OTHER", label: "Autre" },
 ];
 
+const LEGAL_FORMS = [
+  { code: "SAS", label: "SAS" },
+  { code: "SARL", label: "SARL" },
+  { code: "SA", label: "SA" },
+  { code: "SCA", label: "SCA" },
+  { code: "SCI", label: "SCI" },
+  { code: "SNC", label: "SNC" },
+  { code: "SE", label: "SE" },
+  { code: "OTHER", label: "Autre" },
+];
+
+const sectionTitle = { fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 600 as const, color: "var(--clr-obsidian)", marginBottom: "var(--space-md)" };
+
 export default function UserVerificationStep({
   journeyId,
   stepId,
   investorId,
   personKernelId,
+  investorType,
+  legalEntityKernelId,
   actionUrl,
   onComplete,
 }: Props) {
-  // Identity fields
+  const isLegal = investorType === "LEGAL";
+
+  // Operator identity fields
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [birthDate, setBirthDate] = useState("");
@@ -49,11 +68,20 @@ export default function UserVerificationStep({
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
 
-  // Address fields
+  // Operator address fields
   const [street, setStreet] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [city, setCity] = useState("");
   const [country, setCountry] = useState("FR");
+
+  // Legal entity fields
+  const [companyName, setCompanyName] = useState("");
+  const [siret, setSiret] = useState("");
+  const [legalForm, setLegalForm] = useState("SAS");
+  const [companyStreet, setCompanyStreet] = useState("");
+  const [companyPostalCode, setCompanyPostalCode] = useState("");
+  const [companyCity, setCompanyCity] = useState("");
+  const [companyCountry, setCompanyCountry] = useState("FR");
 
   // Documents
   const [uploading, setUploading] = useState<string | null>(null);
@@ -139,6 +167,10 @@ export default function UserVerificationStep({
       setError("Veuillez remplir tous les champs obligatoires.");
       return;
     }
+    if (isLegal && (!companyName.trim() || !siret.trim() || !companyStreet.trim() || !companyPostalCode.trim() || !companyCity.trim())) {
+      setError("Veuillez remplir tous les champs de la société.");
+      return;
+    }
     setCompleting(true);
     setError(null);
     try {
@@ -177,7 +209,49 @@ export default function UserVerificationStep({
             phone: phone.trim(),
           });
         } catch {
-          // Account creation is best-effort, don't block verification
+          // Account creation is best-effort
+        }
+      }
+
+      // ── Legal entity specific steps ──
+      if (isLegal && legalEntityKernelId) {
+        // Update kernel with real name/siret
+        await callAction({
+          type: "update-legal-entity-kernel",
+          legalEntityKernelId,
+          name: companyName.trim(),
+          siret: siret.trim(),
+        });
+
+        // Create full legal entity
+        const leResult = await callAction({
+          type: "create-legal-entity",
+          name: companyName.trim(),
+          siret: siret.trim(),
+          legalForm,
+          registeredAddress: {
+            street: companyStreet.trim(),
+            city: companyCity.trim(),
+            postalCode: companyPostalCode.trim(),
+            country: companyCountry,
+          },
+          legalEntityKernelId,
+        });
+
+        // Add operator as legal representative
+        const legalEntityId = (leResult as Record<string, string>).id;
+        if (legalEntityId && personId) {
+          try {
+            await callAction({
+              type: "add-company-role",
+              legalEntityId,
+              personId,
+              roleType: "LEGAL_REPRESENTATIVE",
+              since: new Date().toISOString().split("T")[0],
+            });
+          } catch {
+            // Best-effort — don't block verification
+          }
         }
       }
 
@@ -197,7 +271,7 @@ export default function UserVerificationStep({
 
   const requiredDocs = DOC_TYPES.filter((d) => d.required);
   const allRequiredUploaded = requiredDocs.every((d) => uploadedDocs.some((u) => u.type === d.type));
-  const isFormValid =
+  const isPersonValid =
     firstName.trim().length > 0 &&
     lastName.trim().length > 0 &&
     birthDate.length > 0 &&
@@ -205,8 +279,15 @@ export default function UserVerificationStep({
     phone.trim().length > 0 &&
     street.trim().length > 0 &&
     postalCode.trim().length > 0 &&
-    city.trim().length > 0 &&
-    allRequiredUploaded;
+    city.trim().length > 0;
+  const isCompanyValid = !isLegal || (
+    companyName.trim().length > 0 &&
+    siret.trim().length > 0 &&
+    companyStreet.trim().length > 0 &&
+    companyPostalCode.trim().length > 0 &&
+    companyCity.trim().length > 0
+  );
+  const isFormValid = isPersonValid && isCompanyValid && allRequiredUploaded;
 
   return (
     <div className="step-panel">
@@ -221,17 +302,19 @@ export default function UserVerificationStep({
         <div>
           <h2 className="step-panel__title">Vérification d'identité</h2>
           <p className="step-panel__desc">
-            Renseignez vos informations personnelles et uploadez vos justificatifs.
+            {isLegal
+              ? "Renseignez les informations du représentant légal et de la société."
+              : "Renseignez vos informations personnelles et uploadez vos justificatifs."}
           </p>
         </div>
       </div>
 
       {error && <div className="form-error" style={{ marginBottom: "var(--space-md)" }}>{error}</div>}
 
-      {/* ── Identity ── */}
+      {/* ── Operator Identity ── */}
       <div style={{ marginBottom: "var(--space-lg)" }}>
-        <h3 style={{ fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 600, color: "var(--clr-obsidian)", marginBottom: "var(--space-md)" }}>
-          Identité
+        <h3 style={sectionTitle}>
+          {isLegal ? "Représentant légal" : "Identité"}
         </h3>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-sm)" }}>
           <div>
@@ -265,10 +348,10 @@ export default function UserVerificationStep({
         </div>
       </div>
 
-      {/* ── Address ── */}
+      {/* ── Operator Address ── */}
       <div style={{ marginBottom: "var(--space-lg)" }}>
-        <h3 style={{ fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 600, color: "var(--clr-obsidian)", marginBottom: "var(--space-md)" }}>
-          Adresse
+        <h3 style={sectionTitle}>
+          {isLegal ? "Adresse du représentant" : "Adresse"}
         </h3>
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
           <div>
@@ -298,11 +381,60 @@ export default function UserVerificationStep({
         </div>
       </div>
 
+      {/* ── Legal Entity Info (only for LEGAL) ── */}
+      {isLegal && (
+        <div style={{ marginBottom: "var(--space-lg)" }}>
+          <h3 style={sectionTitle}>Société</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "var(--space-sm)" }}>
+              <div>
+                <label className="form-label" htmlFor="kyc-companyName">Dénomination sociale *</label>
+                <input id="kyc-companyName" className="form-input" placeholder="Ma Société SAS" value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
+              </div>
+              <div>
+                <label className="form-label" htmlFor="kyc-legalForm">Forme juridique *</label>
+                <select id="kyc-legalForm" className="form-input" value={legalForm} onChange={(e) => setLegalForm(e.target.value)}>
+                  {LEGAL_FORMS.map((f) => (
+                    <option key={f.code} value={f.code}>{f.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="form-label" htmlFor="kyc-siret">SIRET *</label>
+              <input id="kyc-siret" className="form-input" placeholder="123 456 789 00012" maxLength={14} value={siret} onChange={(e) => setSiret(e.target.value.replace(/\s/g, ""))} />
+            </div>
+            <div>
+              <label className="form-label" htmlFor="kyc-companyStreet">Adresse du siège *</label>
+              <input id="kyc-companyStreet" className="form-input" placeholder="10 avenue des Champs-Élysées" value={companyStreet} onChange={(e) => setCompanyStreet(e.target.value)} />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "var(--space-sm)" }}>
+              <div>
+                <label className="form-label" htmlFor="kyc-companyPostalCode">Code postal *</label>
+                <input id="kyc-companyPostalCode" className="form-input" placeholder="75008" value={companyPostalCode} onChange={(e) => setCompanyPostalCode(e.target.value)} />
+              </div>
+              <div>
+                <label className="form-label" htmlFor="kyc-companyCity">Ville *</label>
+                <input id="kyc-companyCity" className="form-input" placeholder="Paris" value={companyCity} onChange={(e) => setCompanyCity(e.target.value)} />
+              </div>
+            </div>
+            <div>
+              <label className="form-label" htmlFor="kyc-companyCountry">Pays *</label>
+              <select id="kyc-companyCountry" className="form-input" value={companyCountry} onChange={(e) => setCompanyCountry(e.target.value)}>
+                <option value="FR">France</option>
+                <option value="BE">Belgique</option>
+                <option value="CH">Suisse</option>
+                <option value="LU">Luxembourg</option>
+                <option value="DE">Allemagne</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Documents ── */}
       <div style={{ marginBottom: "var(--space-md)" }}>
-        <h3 style={{ fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 600, color: "var(--clr-obsidian)", marginBottom: "var(--space-md)" }}>
-          Justificatifs
-        </h3>
+        <h3 style={sectionTitle}>Justificatifs</h3>
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
           {DOC_TYPES.map((doc) => {
             const uploaded = uploadedDocs.find((d) => d.type === doc.type);
