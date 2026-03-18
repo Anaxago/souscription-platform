@@ -209,7 +209,8 @@ export default function InvestorProfileStep({
             }
           }
         }
-        // All categories done — re-fetch journey (backend auto-completes the step)
+        // All categories done — try to complete the step (409 handled server-side)
+        await callAction({ type: "complete", journeyId, stepId });
         onComplete();
       } else {
         setCurrentCatIndex((i) => i + 1);
