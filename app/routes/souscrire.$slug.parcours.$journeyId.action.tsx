@@ -400,8 +400,17 @@ export async function action({ request }: Route.ActionArgs) {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        // Ignore conflict (person already exists for this kernel)
+        // Conflict — person already exists for this kernel, fetch existing person ID
         if (res.status === 409) {
+          const existingId = (err as Record<string, string>).id;
+          if (existingId) return Response.json({ id: existingId });
+          // Fallback: search persons to find the one matching this kernel
+          const searchRes = await api(`/persons?pageSize=1`);
+          if (searchRes.ok) {
+            const searchBody = (await searchRes.json()) as { data: { id: string; personKernelId: string | null }[] };
+            const match = searchBody.data?.find((p) => p.personKernelId === body.personKernelId);
+            if (match) return Response.json({ id: match.id });
+          }
           return Response.json({ ok: true });
         }
         return errorResponse((err as Record<string, string>).message ?? "Erreur création personne", res.status);

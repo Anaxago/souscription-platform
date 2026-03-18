@@ -166,15 +166,19 @@ export default function UserVerificationStep({
         },
       });
 
-      // Create Account with email + phone
+      // Create Account with email + phone (non-blocking)
       const personId = (personResult as Record<string, string>).id;
       if (personId) {
-        await callAction({
-          type: "create-account",
-          personId,
-          email: email.trim(),
-          phone: phone.trim(),
-        });
+        try {
+          await callAction({
+            type: "create-account",
+            personId,
+            email: email.trim(),
+            phone: phone.trim(),
+          });
+        } catch {
+          // Account creation is best-effort, don't block verification
+        }
       }
 
       // Complete verification
