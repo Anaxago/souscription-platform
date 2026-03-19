@@ -258,12 +258,12 @@ html, body {
   z-index: 2;
   max-width: var(--max-width);
   margin: 0 auto;
-  padding: calc(var(--space-xl) + 68px) var(--space-xl) var(--space-lg);
+  padding: calc(var(--space-xl) + 68px) var(--space-2xl) var(--space-xl);
   box-sizing: border-box;
   width: 100%;
 }
 .hero-dark__inner--with-media .hero-dark__text {
-  max-width: 55%;
+  max-width: 65%;
 }
 .hero-dark__text {
   min-width: 0;
@@ -272,12 +272,13 @@ html, body {
   color: var(--clr-off-white);
 }
 
-/* Hero image — absolute right with gradient fade */
+/* Hero image — full screen background */
 .hero-dark__media {
   position: absolute;
+  left: 0;
   right: 0;
   top: 0;
-  width: 50%;
+  width: 100%;
   height: 100%;
   z-index: 0;
 }
@@ -285,8 +286,8 @@ html, body {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center top;
-  filter: brightness(0.75) saturate(0.9);
+  object-position: center center;
+  filter: brightness(0.6) saturate(0.85);
 }
 
 /* Vertical fade at the bottom for reassurance band */
@@ -313,12 +314,11 @@ html, body {
   width: 100%;
   height: 100%;
   background: linear-gradient(
-    to right,
-    #0d2e2b 0%,
-    #0d2e2b 25%,
-    rgba(13, 46, 43, 0.85) 40%,
-    rgba(13, 46, 43, 0.4) 60%,
-    rgba(13, 46, 43, 0.0) 80%
+    135deg,
+    rgba(13, 46, 43, 0.92) 0%,
+    rgba(13, 46, 43, 0.7) 40%,
+    rgba(13, 46, 43, 0.3) 70%,
+    rgba(13, 46, 43, 0.1) 100%
   );
   pointer-events: none;
 }
