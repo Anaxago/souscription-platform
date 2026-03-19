@@ -79,6 +79,7 @@ export default function KnowledgeQuizStep({
           type: "fetch-knowledge-quiz",
           financialInstrumentId,
         });
+        console.log("Quiz data:", JSON.stringify((data as QuizTemplate).questions[0]?.choices[0]));
         setQuiz(data as QuizTemplate);
       } catch {
         setError("Impossible de charger le quiz.");
@@ -108,6 +109,7 @@ export default function KnowledgeQuizStep({
   }
 
   async function handleSubmit() {
+    console.log("handleSubmit called, answers:", answers, "allAnswered:", allAnswered);
     if (!quiz) return;
     setSubmitting(true);
     setError(null);
@@ -182,6 +184,7 @@ export default function KnowledgeQuizStep({
 
   const questions = [...quiz.questions].sort((a, b) => a.position - b.position);
   const allAnswered = questions.every((q) => (answers[q.id]?.length ?? 0) > 0);
+  console.log("Quiz state:", { answers, allAnswered, questionIds: questions.map((q) => q.id) });
 
   // Blocked result — show score and retry
   if (result?.outcome === "BLOCKED") {
