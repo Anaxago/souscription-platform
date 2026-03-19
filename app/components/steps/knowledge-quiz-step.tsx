@@ -25,6 +25,8 @@ interface Question {
   wording: string;
   type: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "TRUE_FALSE";
   choices: Choice[];
+  correctFeedback?: string | null;
+  incorrectFeedback?: string | null;
 }
 
 interface QuizTemplate {
@@ -376,6 +378,14 @@ export default function KnowledgeQuizStep({
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-lg)" }}>
         {questions.map((q, qIndex) => {
           const selected = answers[q.id] ?? [];
+          const hasAnswered = selected.length > 0;
+          const correctChoice = q.choices.find((c) => c.isCorrect);
+          const correctKey = correctChoice ? getChoiceKey(correctChoice) : "";
+          const isCorrect = hasAnswered && selected.includes(correctKey);
+          const feedbackMsg = hasAnswered
+            ? (isCorrect ? q.correctFeedback : q.incorrectFeedback)
+            : null;
+
           return (
             <div key={q.id}>
               <p style={{ fontWeight: 500, fontSize: 15, color: "var(--clr-obsidian)", marginBottom: "var(--space-sm)" }}>
@@ -385,10 +395,28 @@ export default function KnowledgeQuizStep({
                 {q.choices.map((c) => {
                   const key = getChoiceKey(c);
                   const isSelected = selected.includes(key);
+                  const showCorrect = hasAnswered && c.isCorrect;
+                  const showWrong = hasAnswered && isSelected && !c.isCorrect;
+
+                  let borderColor: string | undefined;
+                  let bg: string | undefined;
+                  if (showCorrect) {
+                    borderColor = "var(--clr-primary)";
+                    bg = "rgba(26, 93, 86, 0.06)";
+                  } else if (showWrong) {
+                    borderColor = "#c0392b";
+                    bg = "rgba(192, 57, 43, 0.06)";
+                  } else if (isSelected) {
+                    borderColor = "var(--clr-primary)";
+                    bg = "var(--clr-primary-light)";
+                  }
+
                   return (
                     <label key={key} className="choice-card" style={{
-                      borderColor: isSelected ? "var(--clr-primary)" : undefined,
-                      background: isSelected ? "var(--clr-primary-light)" : undefined,
+                      borderColor,
+                      background: bg,
+                      pointerEvents: hasAnswered ? "none" : undefined,
+                      opacity: hasAnswered && !isSelected && !showCorrect ? 0.5 : 1,
                     }}>
                       <input
                         type={q.type === "MULTIPLE_CHOICE" ? "checkbox" : "radio"}
@@ -396,15 +424,47 @@ export default function KnowledgeQuizStep({
                         checked={isSelected}
                         onChange={() => handleSelect(q.id, key, q.type)}
                         style={{ display: "none" }}
+                        disabled={hasAnswered}
                       />
-                      <span className="choice-card__radio">
-                        {isSelected && <span className="choice-card__radio-dot" />}
+                      <span className="choice-card__radio" style={showCorrect ? { borderColor: "var(--clr-primary)" } : showWrong ? { borderColor: "#c0392b" } : undefined}>
+                        {(isSelected || showCorrect) && (
+                          <span className="choice-card__radio-dot" style={showWrong ? { background: "#c0392b" } : undefined} />
+                        )}
                       </span>
-                      <span className="choice-card__label">{c.label}</span>
+                      <span className="choice-card__label" style={{ flex: 1 }}>{c.label}</span>
+                      {showCorrect && (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="2.5" style={{ flexShrink: 0 }}><polyline points="20 6 9 17 4 12" /></svg>
+                      )}
+                      {showWrong && (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c0392b" strokeWidth="2.5" style={{ flexShrink: 0 }}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                      )}
                     </label>
                   );
                 })}
               </div>
+              {hasAnswered && feedbackMsg && (
+                <div style={{
+                  marginTop: "var(--space-xs)",
+                  padding: "var(--space-xs) var(--space-sm)",
+                  borderRadius: "var(--radius-sm)",
+                  background: isCorrect ? "rgba(26, 93, 86, 0.06)" : "rgba(192, 57, 43, 0.06)",
+                  fontSize: 13,
+                  color: isCorrect ? "var(--clr-primary)" : "#c0392b",
+                  lineHeight: 1.4,
+                }}>
+                  {feedbackMsg}
+                </div>
+              )}
+              {hasAnswered && !feedbackMsg && (
+                <div style={{
+                  marginTop: "var(--space-xs)",
+                  fontSize: 13,
+                  color: isCorrect ? "var(--clr-primary)" : "#c0392b",
+                  fontWeight: 500,
+                }}>
+                  {isCorrect ? "Bonne réponse !" : `La bonne réponse était : ${correctChoice?.label ?? ""}`}
+                </div>
+              )}
             </div>
           );
         })}
