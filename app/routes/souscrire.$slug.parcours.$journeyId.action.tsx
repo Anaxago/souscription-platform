@@ -368,7 +368,8 @@ export async function action({ request }: Route.ActionArgs) {
       const sessionId = draftSession?.id;
 
       if (!sessionId) {
-        return errorResponse("Session non trouvée après création", 500);
+        // No DRAFT session — category already validated, treat as success
+        return Response.json({ ok: true, assessmentId });
       }
 
       // 3. Submit each answer
