@@ -97,6 +97,21 @@ export default function EnvelopeSelectionStep({
 
       {error && <div className="form-error" style={{ marginBottom: "var(--space-md)" }}>{error}</div>}
 
+      {envelopeOptions.length === 1 && envelopeOptions[0].value === "CTO" && (
+        <div style={{
+          padding: "var(--space-sm) var(--space-md)",
+          background: "var(--clr-primary-light)",
+          borderRadius: "var(--radius-md)",
+          border: "1px solid var(--clr-primary)",
+          marginBottom: "var(--space-md)",
+          fontSize: 14,
+          color: "var(--clr-obsidian)",
+          lineHeight: 1.5,
+        }}>
+          Ce produit est proposé exclusivement en Compte-Titres pour vous garantir une souscription instantanée et éviter les frais de gestion d'enveloppe.
+        </div>
+      )}
+
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-xs)", marginBottom: "var(--space-lg)" }}>
         {envelopeOptions.map((opt) => (
           <label key={opt.value} className="choice-card" style={{
