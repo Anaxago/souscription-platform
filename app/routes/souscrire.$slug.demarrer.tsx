@@ -14,12 +14,6 @@ interface MarketingProduct {
   status: string;
 }
 
-interface LegalEntityKernel {
-  id: string;
-  name: string;
-  siret: string;
-}
-
 /* ──────────────────────────────────────────────
    Helpers
    ────────────────────────────────────────────── */
@@ -42,27 +36,6 @@ async function findIssuanceOperationId(productId: string): Promise<string | unde
   return undefined;
 }
 
-async function findOrCreateLeKernel(siret: string): Promise<{ id: string; name: string } | null> {
-  // Search existing kernels by SIRET
-  try {
-    const res = await api("/legal-entity-kernels?pageSize=100");
-    if (res.ok) {
-      const body = (await res.json()) as { data: LegalEntityKernel[] };
-      const match = (body.data ?? []).find((k) => k.siret === siret);
-      if (match) return { id: match.id, name: match.name };
-    }
-  } catch { /* */ }
-
-  // Not found — create new
-  const res = await api("/legal-entity-kernels", {
-    method: "POST",
-    body: JSON.stringify({ name: "Entreprise", siret }),
-  });
-  if (!res.ok) return null;
-  const kernel = (await res.json()) as { id: string; name: string };
-  return { id: kernel.id, name: kernel.name };
-}
-
 /* ──────────────────────────────────────────────
    Loader
    ────────────────────────────────────────────── */
@@ -83,14 +56,13 @@ export function meta() {
 }
 
 /* ──────────────────────────────────────────────
-   Action
+   Action — create entities based on investor type, then redirect
    ────────────────────────────────────────────── */
 
 export async function action({ request, params }: Route.ActionArgs) {
   const { slug } = params;
   const formData = await request.formData();
   const investorType = formData.get("investorType") as string;
-  const siret = (formData.get("siret") as string)?.trim();
 
   const productRes = await api(`/marketing-products/by-slug/${slug}`);
   if (!productRes.ok) throw data(null, { status: 404 });
@@ -99,10 +71,6 @@ export async function action({ request, params }: Route.ActionArgs) {
   const errorData = { product, slug };
 
   if (investorType === "LEGAL") {
-    if (!siret || siret.length !== 14) {
-      return { error: "Veuillez saisir un SIRET valide (14 chiffres).", ...errorData };
-    }
-
     // 1. PersonKernel for operator
     const kernelRes = await api("/person-kernels", {
       method: "POST",
@@ -111,9 +79,17 @@ export async function action({ request, params }: Route.ActionArgs) {
     if (!kernelRes.ok) return { error: "Erreur lors de la création du profil.", ...errorData };
     const kernel = (await kernelRes.json()) as { id: string };
 
-    // 2. Find or create LegalEntityKernel by SIRET
-    const leKernel = await findOrCreateLeKernel(siret);
-    if (!leKernel) return { error: "Erreur lors de la création de la société. Vérifiez le SIRET.", ...errorData };
+    // 2. Create placeholder LegalEntityKernel (real SIRET collected at verification step)
+    const placeholderSiret = `${Date.now()}`.slice(0, 14);
+    const leKernelRes = await api("/legal-entity-kernels", {
+      method: "POST",
+      body: JSON.stringify({ name: "Entreprise", siret: placeholderSiret }),
+    });
+    if (!leKernelRes.ok) {
+      const err = await leKernelRes.json().catch(() => ({}));
+      return { error: (err as Record<string, string>).message ?? "Erreur création société.", ...errorData };
+    }
+    const leKernel = (await leKernelRes.json()) as { id: string };
 
     // 3. Create LegalEntityInvestor
     const investorRes = await api("/legal-entity-investors", {
@@ -187,7 +163,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 /* ──────────────────────────────────────────────
-   Component
+   Component — investor type selection only
    ────────────────────────────────────────────── */
 
 export default function DemarrerSouscription({ loaderData, actionData }: Route.ComponentProps) {
@@ -198,11 +174,7 @@ export default function DemarrerSouscription({ loaderData, actionData }: Route.C
   const errorMessage = actionResult?.error;
 
   const [investorType, setInvestorType] = useState("NATURAL");
-  const [siret, setSiret] = useState("");
   const [submitting, setSubmitting] = useState(false);
-
-  const isLegal = investorType === "LEGAL";
-  const canSubmit = !isLegal || siret.replace(/\s/g, "").length === 14;
 
   return (
     <div className="ds4-body">
@@ -227,7 +199,6 @@ export default function DemarrerSouscription({ loaderData, actionData }: Route.C
 
           <form method="post" onSubmit={() => setSubmitting(true)}>
             <input type="hidden" name="investorType" value={investorType} />
-            <input type="hidden" name="siret" value={siret.replace(/\s/g, "")} />
 
             <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)", marginBottom: "var(--space-lg)" }}>
               <label className="choice-card" style={{
@@ -245,12 +216,12 @@ export default function DemarrerSouscription({ loaderData, actionData }: Route.C
               </label>
 
               <label className="choice-card" style={{
-                borderColor: isLegal ? "var(--clr-primary)" : undefined,
-                background: isLegal ? "var(--clr-primary-light)" : undefined,
+                borderColor: investorType === "LEGAL" ? "var(--clr-primary)" : undefined,
+                background: investorType === "LEGAL" ? "var(--clr-primary-light)" : undefined,
               }}>
-                <input type="radio" name="investorTypeRadio" checked={isLegal} onChange={() => setInvestorType("LEGAL")} style={{ display: "none" }} />
+                <input type="radio" name="investorTypeRadio" checked={investorType === "LEGAL"} onChange={() => setInvestorType("LEGAL")} style={{ display: "none" }} />
                 <span className="choice-card__radio">
-                  {isLegal && <span className="choice-card__radio-dot" />}
+                  {investorType === "LEGAL" && <span className="choice-card__radio-dot" />}
                 </span>
                 <div style={{ flex: 1 }}>
                   <span className="choice-card__label">Personne morale</span>
@@ -259,29 +230,11 @@ export default function DemarrerSouscription({ loaderData, actionData }: Route.C
               </label>
             </div>
 
-            {isLegal && (
-              <div style={{ marginBottom: "var(--space-lg)" }}>
-                <label className="form-label" htmlFor="siret-input">Numéro SIRET de la société *</label>
-                <input
-                  id="siret-input"
-                  className="form-input"
-                  placeholder="123 456 789 00012"
-                  maxLength={17}
-                  value={siret}
-                  onChange={(e) => setSiret(e.target.value)}
-                  autoFocus
-                />
-                <p style={{ fontSize: 12, color: "var(--clr-cashmere)", marginTop: 4 }}>
-                  14 chiffres — si la société existe déjà, elle sera automatiquement rattachée.
-                </p>
-              </div>
-            )}
-
             <button
               type="submit"
               className="btn-primary"
-              style={{ width: "100%", justifyContent: "center", opacity: canSubmit && !submitting ? 1 : 0.5 }}
-              disabled={!canSubmit || submitting}
+              style={{ width: "100%", justifyContent: "center", opacity: submitting ? 0.5 : 1 }}
+              disabled={submitting}
             >
               {submitting ? "Création du parcours..." : "Continuer"}
             </button>
