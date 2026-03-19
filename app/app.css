@@ -1118,13 +1118,11 @@ html, body {
 
 /* Content area */
 .journey-content {
-  padding: var(--space-lg) var(--space-xl) var(--space-xl) var(--space-2xl);
-  max-width: 800px;
-  width: 100%;
+  padding: var(--space-lg) var(--space-xl);
+  flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  padding-top: var(--space-xl);
 }
 .journey-content > .step-panel {
   border: none;
@@ -1135,13 +1133,15 @@ html, body {
   margin-bottom: var(--space-xl);
 }
 .journey-content > .step-panel .step-panel__title {
-  font-size: 24px;
-  font-weight: 300;
+  font-size: 26px;
+  font-weight: 400;
   letter-spacing: -0.02em;
+  color: var(--clr-obsidian);
 }
 .journey-content > .step-panel .step-panel__desc {
-  font-size: 16px;
+  font-size: 15px;
   margin-top: 4px;
+  color: var(--clr-cashmere);
 }
 
 /* Mobile: stack vertically */
@@ -1287,10 +1287,10 @@ html, body {
   display: block;
   font-family: var(--font-display);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--clr-cashmere);
+  color: var(--clr-obsidian);
   margin-bottom: var(--space-xs);
 }
 .form-input {
