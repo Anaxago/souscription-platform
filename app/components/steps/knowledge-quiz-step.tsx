@@ -3,14 +3,16 @@ import { useState, useEffect } from "react";
 interface Props {
   journeyId: string;
   stepId: string;
+  investorId: string;
+  investorType: string;
+  personKernelId: string;
   financialInstrumentId: string | null;
   actionUrl: string;
   onComplete: () => void;
 }
 
 interface Choice {
-  id: string;
-  choiceKey: string;
+  choiceId: string;
   label: string;
 }
 
@@ -18,7 +20,7 @@ interface Question {
   id: string;
   position: number;
   wording: string;
-  type: string;
+  type: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "TRUE_FALSE";
   choices: Choice[];
 }
 
@@ -29,18 +31,27 @@ interface QuizTemplate {
   warningThreshold: number;
 }
 
+interface EvaluateResult {
+  score: number;
+  outcome: "APPROVED" | "WARNING" | "BLOCKED";
+}
+
 export default function KnowledgeQuizStep({
   journeyId,
   stepId,
+  investorId,
+  investorType,
+  personKernelId,
   financialInstrumentId,
   actionUrl,
   onComplete,
 }: Props) {
   const [quiz, setQuiz] = useState<QuizTemplate | null>(null);
   const [loading, setLoading] = useState(true);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<EvaluateResult | null>(null);
 
   async function callAction(payload: Record<string, unknown>) {
     const res = await fetch(actionUrl, {
@@ -62,11 +73,11 @@ export default function KnowledgeQuizStep({
     }
     async function fetchQuiz() {
       try {
-        const result = await callAction({
+        const data = await callAction({
           type: "fetch-knowledge-quiz",
           financialInstrumentId,
         });
-        setQuiz(result as QuizTemplate);
+        setQuiz(data as QuizTemplate);
       } catch {
         setError("Impossible de charger le quiz.");
       } finally {
@@ -77,27 +88,53 @@ export default function KnowledgeQuizStep({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [financialInstrumentId]);
 
+  function handleSelect(questionId: string, choiceId: string, type: string) {
+    setAnswers((prev) => {
+      if (type === "MULTIPLE_CHOICE") {
+        const current = prev[questionId] ?? [];
+        const updated = current.includes(choiceId)
+          ? current.filter((c) => c !== choiceId)
+          : [...current, choiceId];
+        return { ...prev, [questionId]: updated };
+      }
+      return { ...prev, [questionId]: [choiceId] };
+    });
+  }
+
   async function handleSubmit() {
     if (!quiz) return;
     setSubmitting(true);
     setError(null);
+    setResult(null);
     try {
-      await callAction({
-        type: "submit-knowledge-quiz",
+      const apiInvestorType = investorType === "LEGAL" ? "LEGAL_ENTITY" : "INDIVIDUAL";
+      const evalResult = await callAction({
+        type: "evaluate-knowledge-quiz",
         journeyId,
         stepId,
-        quizId: quiz.id,
+        investorType: apiInvestorType,
+        performedBy: personKernelId,
         answers: quiz.questions.map((q) => ({
           questionId: q.id,
-          choiceId: answers[q.id],
+          selectedChoiceKeys: answers[q.id] ?? [],
         })),
       });
-      onComplete();
+      const res = evalResult as EvaluateResult;
+      setResult(res);
+      if (res.outcome === "APPROVED" || res.outcome === "WARNING") {
+        onComplete();
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur");
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function handleRetry() {
+    setAnswers({});
+    setResult(null);
+    setError(null);
   }
 
   if (loading) {
@@ -135,7 +172,34 @@ export default function KnowledgeQuizStep({
   }
 
   const questions = [...quiz.questions].sort((a, b) => a.position - b.position);
-  const allAnswered = questions.every((q) => answers[q.id]);
+  const allAnswered = questions.every((q) => (answers[q.id]?.length ?? 0) > 0);
+
+  // Blocked result — show score and retry
+  if (result?.outcome === "BLOCKED") {
+    return (
+      <div className="step-panel">
+        <div className="step-panel__header">
+          <div className="step-panel__icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#c0392b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="step-panel__title">Score insuffisant</h2>
+            <p className="step-panel__desc">
+              Votre score est de {Math.round(result.score)}%. Le seuil minimum est de {quiz.warningThreshold}%.
+            </p>
+          </div>
+        </div>
+        <p style={{ fontSize: 14, color: "var(--clr-cashmere)", marginBottom: "var(--space-lg)" }}>
+          Vous pouvez retenter le quiz pour améliorer votre score.
+        </p>
+        <button className="btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleRetry}>
+          Recommencer le quiz
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="step-panel">
@@ -156,27 +220,39 @@ export default function KnowledgeQuizStep({
       {error && <div className="form-error" style={{ marginBottom: "var(--space-md)" }}>{error}</div>}
 
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-lg)" }}>
-        {questions.map((q, qIndex) => (
-          <div key={q.id}>
-            <p style={{ fontWeight: 500, fontSize: 15, color: "var(--clr-obsidian)", marginBottom: "var(--space-sm)" }}>
-              {qIndex + 1}. {q.wording}
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-xs)" }}>
-              {q.choices.map((c) => (
-                <label key={c.id} className="choice-card" style={{
-                  borderColor: answers[q.id] === c.id ? "var(--clr-primary)" : undefined,
-                  background: answers[q.id] === c.id ? "var(--clr-primary-light)" : undefined,
-                }}>
-                  <input type="radio" name={`quiz-${q.id}`} checked={answers[q.id] === c.id} onChange={() => setAnswers((prev) => ({ ...prev, [q.id]: c.id }))} style={{ display: "none" }} />
-                  <span className="choice-card__radio">
-                    {answers[q.id] === c.id && <span className="choice-card__radio-dot" />}
-                  </span>
-                  <span className="choice-card__label">{c.label}</span>
-                </label>
-              ))}
+        {questions.map((q, qIndex) => {
+          const selected = answers[q.id] ?? [];
+          return (
+            <div key={q.id}>
+              <p style={{ fontWeight: 500, fontSize: 15, color: "var(--clr-obsidian)", marginBottom: "var(--space-sm)" }}>
+                {qIndex + 1}. {q.wording}
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-xs)" }}>
+                {q.choices.map((c) => {
+                  const isSelected = selected.includes(c.choiceId);
+                  return (
+                    <label key={c.choiceId} className="choice-card" style={{
+                      borderColor: isSelected ? "var(--clr-primary)" : undefined,
+                      background: isSelected ? "var(--clr-primary-light)" : undefined,
+                    }}>
+                      <input
+                        type={q.type === "MULTIPLE_CHOICE" ? "checkbox" : "radio"}
+                        name={`quiz-${q.id}`}
+                        checked={isSelected}
+                        onChange={() => handleSelect(q.id, c.choiceId, q.type)}
+                        style={{ display: "none" }}
+                      />
+                      <span className="choice-card__radio">
+                        {isSelected && <span className="choice-card__radio-dot" />}
+                      </span>
+                      <span className="choice-card__label">{c.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <button

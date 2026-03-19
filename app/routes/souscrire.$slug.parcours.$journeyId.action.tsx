@@ -30,7 +30,7 @@ type ActionPayload =
   | { type: "remove-source-of-funds"; investorId: string; origin: string }
   | { type: "activate-le-investor"; investorId: string }
   | { type: "fetch-knowledge-quiz"; financialInstrumentId: string }
-  | { type: "submit-knowledge-quiz"; journeyId: string; stepId: string; quizId: string; answers: { questionId: string; choiceId: string }[] };
+  | { type: "evaluate-knowledge-quiz"; journeyId: string; stepId: string; investorType: string; performedBy: string; answers: { questionId: string; selectedChoiceKeys: string[] }[] };
 
 function errorResponse(message: string, status: number) {
   return Response.json({ error: message }, { status });
@@ -481,7 +481,7 @@ export async function action({ request }: Route.ActionArgs) {
 
     /* ── Fetch Knowledge Quiz ── */
     case "fetch-knowledge-quiz": {
-      const res = await api(`/knowledge-quizzes/templates/${body.financialInstrumentId}`);
+      const res = await api(`/knowledge-quizzes/by-financial-instrument/${body.financialInstrumentId}`);
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         return errorResponse((err as Record<string, string>).message ?? "Quiz introuvable", res.status);
@@ -489,17 +489,24 @@ export async function action({ request }: Route.ActionArgs) {
       return Response.json(await res.json());
     }
 
-    /* ── Submit Knowledge Quiz ── */
-    case "submit-knowledge-quiz": {
-      // Calculate score client-side isn't safe, but we don't have a submit endpoint yet.
-      // For now, complete the step after submission.
-      try {
-        await api(
-          `/subscription-journeys/${body.journeyId}/steps/${body.stepId}/complete`,
-          { method: "POST" },
-        );
-      } catch { /* 409 = already completed */ }
-      return Response.json({ ok: true });
+    /* ── Evaluate Knowledge Quiz ── */
+    case "evaluate-knowledge-quiz": {
+      const res = await api(
+        `/subscription-journeys/${body.journeyId}/steps/${body.stepId}/evaluate-knowledge-quiz`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            investorType: body.investorType,
+            performedBy: body.performedBy,
+            answers: body.answers,
+          }),
+        },
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return errorResponse((err as Record<string, string>).message ?? "Erreur évaluation quiz", res.status);
+      }
+      return Response.json(await res.json());
     }
 
     /* ── Update Legal Entity Kernel ── */
