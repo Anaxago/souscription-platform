@@ -222,6 +222,7 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [overrideStepId, setOverrideStepId] = useState<string | null>(null);
+  const [stepKey, setStepKey] = useState(0);
   const actionUrl = `/souscrire/${slug}/parcours/${journey.id}/action`;
 
   const applicableSteps = journey.steps
@@ -313,6 +314,7 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
   const onStepComplete = () => {
     console.log("[Parcours] onStepComplete — clearing override, revalidating");
     setOverrideStepId(null);
+    setStepKey((k) => k + 1);
     revalidator.revalidate();
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -447,7 +449,9 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
 
           {/* Active step panel */}
           {activeStep && activeStep.stepStatus !== "COMPLETED" && (
-            renderStepPanel(activeStep)
+            <div key={`${activeStep.id}-${stepKey}`}>
+              {renderStepPanel(activeStep)}
+            </div>
           )}
 
           {/* Journey completed */}
