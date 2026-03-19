@@ -312,10 +312,11 @@ export default function UserVerificationStep({
       // Set user-verification status to trigger step auto-completion
       let verificationOk = false;
       try {
-        await callAction({
+        const verResult = await callAction({
           type: "user-verification",
           journeyId,
         });
+        console.log("user-verification result:", JSON.stringify(verResult));
         verificationOk = true;
       } catch (e) {
         console.error("user-verification failed:", e);
@@ -323,11 +324,12 @@ export default function UserVerificationStep({
 
       // Try to complete the step explicitly
       try {
-        await callAction({
+        const completeResult = await callAction({
           type: "complete-verification",
           journeyId,
           stepId,
         });
+        console.log("complete-verification result:", JSON.stringify(completeResult));
       } catch (e) {
         console.error("complete-verification failed:", e);
       }
