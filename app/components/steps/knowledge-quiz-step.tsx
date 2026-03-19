@@ -131,7 +131,10 @@ export default function KnowledgeQuizStep({
         onComplete();
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur");
+      const msg = e instanceof Error ? e.message : "Erreur inconnue";
+      console.error("Knowledge quiz error:", msg, e);
+      setError(msg);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } finally {
       setSubmitting(false);
     }
