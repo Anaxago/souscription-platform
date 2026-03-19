@@ -74,6 +74,7 @@ export default function InvestorProfileStep({
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [profileDone, setProfileDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function callAction(payload: Record<string, unknown>) {
@@ -234,7 +235,8 @@ export default function InvestorProfileStep({
         } catch {
           // Step may auto-complete from backend
         }
-        onComplete();
+        setProfileDone(true);
+        window.scrollTo({ top: 0, behavior: "smooth" });
       } else {
         setCurrentCatIndex((i) => i + 1);
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -252,6 +254,34 @@ export default function InvestorProfileStep({
         <p style={{ textAlign: "center", color: "var(--clr-cashmere)", padding: "var(--space-lg)" }}>
           Chargement du questionnaire...
         </p>
+      </div>
+    );
+  }
+
+  if (profileDone) {
+    return (
+      <div className="step-panel">
+        <div style={{ textAlign: "center", padding: "var(--space-lg) 0" }}>
+          <div style={{
+            width: 72, height: 72, borderRadius: "50%",
+            background: "var(--clr-success-light)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            margin: "0 auto var(--space-md)",
+          }}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 400, color: "var(--clr-obsidian)", marginBottom: "var(--space-xs)" }}>
+            Profil complété
+          </h2>
+          <p style={{ fontSize: 15, color: "var(--clr-cashmere)", maxWidth: 420, margin: "0 auto var(--space-lg)" }}>
+            Vos réponses ont été enregistrées avec succès.
+          </p>
+          <button className="btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={onComplete}>
+            Continuer
+          </button>
+        </div>
       </div>
     );
   }
