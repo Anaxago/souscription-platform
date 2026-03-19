@@ -10,6 +10,7 @@ import EnvelopeSelectionStep from "~/components/steps/envelope-selection-step";
 import DismembermentSelectionStep from "~/components/steps/dismemberment-selection-step";
 import AdequacyCheckStep from "~/components/steps/adequacy-check-step";
 import DocumentUploadStep from "~/components/steps/document-upload-step";
+import ProductSummaryStep from "~/components/steps/product-summary-step";
 import KnowledgeQuizStep from "~/components/steps/knowledge-quiz-step";
 
 
@@ -324,6 +325,9 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
     }
     if (step.stepType === "DOCUMENT_UPLOAD") {
       return <DocumentUploadStep journeyId={journey.id} stepId={step.id} config={step.config as { requiredDocumentTypes: string[] | null } | null} state={step.state as { uploadedDocuments: { documentId: string; documentType: string; fileName: string; uploadedAt: string }[] } | null} actionUrl={actionUrl} onComplete={onStepComplete} />;
+    }
+    if (step.stepType === "PRODUCT_SUMMARY") {
+      return <ProductSummaryStep journeyId={journey.id} stepId={step.id} investorId={journey.investorId} investorType={journey.investorType} productName={marketingProduct?.name ?? null} basket={journey.basket as unknown as { lines: { lineType: string; requestedAmount: number | null }[]; envelopeTarget: { envelopeType: string; provider: string | null } | null } | null} actionUrl={actionUrl} onComplete={onStepComplete} />;
     }
     // Generic fallback: simple complete button
     return (

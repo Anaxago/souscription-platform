@@ -31,7 +31,9 @@ type ActionPayload =
   | { type: "activate-le-investor"; investorId: string }
   | { type: "fetch-knowledge-quiz"; financialInstrumentId: string }
   | { type: "evaluate-knowledge-quiz"; journeyId: string; stepId: string; investorType: string; performedBy: string; answers: { questionId: string; selectedChoiceKeys: string[] }[] }
-  | { type: "submit-verification-question"; journeyId: string; questionType: string; answer: string };
+  | { type: "submit-verification-question"; journeyId: string; questionType: string; answer: string }
+  | { type: "fetch-investor-profile"; investorId: string }
+  | { type: "fetch-le-investor-profile"; investorId: string };
 
 function errorResponse(message: string, status: number) {
   return Response.json({ error: message }, { status });
@@ -477,6 +479,19 @@ export async function action({ request }: Route.ActionArgs) {
         }
         return errorResponse((err as Record<string, string>).message ?? "Erreur création compte", res.status);
       }
+      return Response.json(await res.json());
+    }
+
+    /* ── Fetch Investor Profile ── */
+    case "fetch-investor-profile": {
+      const res = await api(`/individual-investors/${body.investorId}`);
+      if (!res.ok) return errorResponse("Profil investisseur introuvable", res.status);
+      return Response.json(await res.json());
+    }
+
+    case "fetch-le-investor-profile": {
+      const res = await api(`/legal-entity-investors/${body.investorId}`);
+      if (!res.ok) return errorResponse("Profil investisseur PM introuvable", res.status);
       return Response.json(await res.json());
     }
 
