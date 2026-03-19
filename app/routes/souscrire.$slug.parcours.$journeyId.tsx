@@ -224,11 +224,18 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
     .filter((s) => s.isApplicable)
     .sort((a, b) => a.position - b.position);
 
-  const currentStep =
-    applicableSteps.find((s) => s.stepStatus === "IN_PROGRESS") ??
-    applicableSteps.find((s) => s.stepStatus !== "COMPLETED" && s.stepStatus !== "SKIPPED");
+  // USER_VERIFICATION with kycStatus VERIFIED is "pending external approval" — treat as done for navigation
+  const isStepPendingApproval = (s: JourneyStep) =>
+    s.stepType === "USER_VERIFICATION" &&
+    s.stepStatus === "IN_PROGRESS" &&
+    (s.state as { kycStatus?: string } | null)?.kycStatus === "VERIFIED";
 
-  const completedCount = applicableSteps.filter((s) => s.stepStatus === "COMPLETED").length;
+  const currentStep =
+    applicableSteps.find((s) => s.stepStatus === "IN_PROGRESS" && !isStepPendingApproval(s)) ??
+    applicableSteps.find((s) => s.stepStatus !== "COMPLETED" && s.stepStatus !== "SKIPPED" && !isStepPendingApproval(s)) ??
+    applicableSteps.find((s) => s.stepStatus === "IN_PROGRESS");
+
+  const completedCount = applicableSteps.filter((s) => s.stepStatus === "COMPLETED" || isStepPendingApproval(s)).length;
   const progress =
     applicableSteps.length > 0
       ? Math.round((completedCount / applicableSteps.length) * 100)
