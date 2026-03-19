@@ -138,26 +138,31 @@ export async function loader({ params }: Route.LoaderArgs) {
     throw data(null, { status: 404 });
   }
 
-  // Fetch investor to get personKernelId (needed for KYC)
+  // Fetch investor + marketing product in PARALLEL (both only depend on journey)
+  const investorEndpoint = journey.investorType === "LEGAL"
+    ? `/legal-entity-investors/${journey.investorId}`
+    : `/individual-investors/${journey.investorId}`;
+
+  const [investorRes, productRes] = await Promise.all([
+    api(investorEndpoint),
+    api(`/marketing-products/${journey.marketingProductId}`),
+  ]);
+
+  // Parse investor
   let personKernelId: string | null = null;
   let legalEntityKernelId: string | null = null;
-
-  if (journey.investorType === "LEGAL") {
-    const investorRes = await api(`/legal-entity-investors/${journey.investorId}`);
-    if (investorRes.ok) {
+  if (investorRes.ok) {
+    if (journey.investorType === "LEGAL") {
       const investor = (await investorRes.json()) as { legalEntityKernelId: string; operatedBy: string };
       legalEntityKernelId = investor.legalEntityKernelId;
-      personKernelId = investor.operatedBy; // operator's person kernel ID
-    }
-  } else {
-    const investorRes = await api(`/individual-investors/${journey.investorId}`);
-    if (investorRes.ok) {
+      personKernelId = investor.operatedBy;
+    } else {
       const investor = (await investorRes.json()) as { personKernelId: string };
       personKernelId = investor.personKernelId;
     }
   }
 
-  // Fetch marketing product for product selection step
+  // Parse marketing product + fetch shares in parallel if needed
   let marketingProduct: {
     name: string;
     minimumInvestmentInCents: number | null;
@@ -166,7 +171,6 @@ export async function loader({ params }: Route.LoaderArgs) {
     shares: { id: string; name: string; minimumInvestmentInCents: number; minimumInvestmentCurrency: string }[];
   } | null = null;
   let eligibleEnvelopes: { category: string; name: string }[] = [];
-  const productRes = await api(`/marketing-products/${journey.marketingProductId}`);
   if (productRes.ok) {
     const p = (await productRes.json()) as {
       name: string;
@@ -176,12 +180,10 @@ export async function loader({ params }: Route.LoaderArgs) {
       eligibleEnvelopeCategories?: string[];
     };
 
-    // Use eligibleEnvelopeCategories from marketing product
     if (p.eligibleEnvelopeCategories && p.eligibleEnvelopeCategories.length > 0) {
       eligibleEnvelopes = p.eligibleEnvelopeCategories.map((cat) => ({ category: cat, name: cat }));
     }
 
-    // Fetch shares if product has a financial instrument
     let shares: { id: string; name: string; minimumInvestmentInCents: number; minimumInvestmentCurrency: string }[] = [];
     if (p.financialInstrumentId) {
       const fiRes = await api(`/financial-instruments/${p.financialInstrumentId}`);
