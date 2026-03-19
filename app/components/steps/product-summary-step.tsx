@@ -98,9 +98,8 @@ export default function ProductSummaryStep({
 
   const summaryItems = [
     { label: "Produit", value: productName ?? "—" },
-    { label: "Profil de risque", value: loading ? "Chargement..." : (riskTolerance ? RISK_LABELS[riskTolerance] ?? riskTolerance : "Non renseigné") },
     { label: "Enveloppe", value: envelopeType ? (ENVELOPE_LABELS[envelopeType] ?? envelopeType) : "Non sélectionnée" },
-    { label: "Montant engagé", value: amount ? formatEuros(amount) : "Non défini" },
+    { label: "Montant engagé", value: amount ? formatEuros(amount / 100) : "Non défini" },
   ];
 
   return (
