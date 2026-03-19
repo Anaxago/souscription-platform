@@ -308,7 +308,17 @@ export default function UserVerificationStep({
         }
       }
 
-      // Try to complete verification (might 409 if step auto-completes via kycStatus)
+      // Set user-verification status to trigger step auto-completion
+      try {
+        await callAction({
+          type: "user-verification",
+          journeyId,
+        });
+      } catch {
+        // Best-effort
+      }
+
+      // Try to complete the step explicitly
       try {
         await callAction({
           type: "complete-verification",
@@ -316,7 +326,7 @@ export default function UserVerificationStep({
           stepId,
         });
       } catch {
-        // Step may auto-complete when kycStatus is set externally
+        // Step may auto-complete via kycStatus
       }
       onComplete();
     } catch (e) {
