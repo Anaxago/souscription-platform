@@ -87,7 +87,7 @@ const VERIFICATION_QUESTION_PLACEHOLDERS: Record<string, string> = {
   PROFESSIONAL_SITUATION: "Ex : Cadre en CDI, secteur bancaire",
 };
 
-const sectionTitle = { fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 600 as const, color: "var(--clr-obsidian)", marginBottom: "var(--space-md)" };
+const sectionTitle = { fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 600 as const, color: "var(--clr-obsidian)", marginBottom: "var(--space-sm)" };
 
 export default function UserVerificationStep({
   journeyId,
@@ -395,7 +395,7 @@ export default function UserVerificationStep({
         <div style={{ textAlign: "center", padding: "var(--space-lg) 0" }}>
           <div style={{
             width: 72, height: 72, borderRadius: "50%",
-            background: "rgba(26, 93, 86, 0.1)",
+            background: "var(--clr-success-light)",
             display: "flex", alignItems: "center", justifyContent: "center",
             margin: "0 auto var(--space-md)",
           }}>

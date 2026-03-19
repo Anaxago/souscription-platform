@@ -175,7 +175,7 @@ export default function ProductSelectionStep({
           </p>
         )}
         {amountCents > 0 && amountCents < minCents && (
-          <p style={{ fontSize: 12, color: "#c0392b", marginTop: 4 }}>
+          <p style={{ fontSize: 12, color: "var(--clr-error)", marginTop: 4 }}>
             Le montant doit être d'au moins {formatCurrency(minCents, currency)}
           </p>
         )}

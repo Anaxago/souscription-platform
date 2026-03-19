@@ -17,11 +17,23 @@
   --clr-true-white:     #ffffff;
   --clr-stroke-light:   rgba(122, 181, 175, 0.4);
   --clr-stroke-dark:    rgba(122, 181, 175, 0.3);
+  --clr-error:          #c0392b;
+  --clr-error-light:    rgba(192, 57, 43, 0.06);
+  --clr-warning:        #e6a032;
+  --clr-warning-light:  rgba(230, 160, 50, 0.1);
+  --clr-success-light:  rgba(26, 93, 86, 0.08);
 
   /* Typographie */
   --font-display: 'Syne', 'Helvetica Neue', sans-serif;
   --font-serif:   'Playfair Display', 'Georgia', serif;
   --font-body:    'Syne', 'Helvetica Neue', Arial, sans-serif;
+  --text-xs:      11px;
+  --text-sm:      13px;
+  --text-base:    15px;
+  --text-md:      16px;
+  --text-lg:      18px;
+  --text-xl:      22px;
+  --text-2xl:     28px;
 
   /* Espacements */
   --space-xs:   8px;
@@ -1319,10 +1331,10 @@ html, body {
   color: var(--clr-stroke-light);
 }
 .form-error {
-  font-size: 14px;
-  color: #c0392b;
-  background: #fdf2f2;
-  border: 1px solid #f5c6cb;
+  font-size: var(--text-base);
+  color: var(--clr-error);
+  background: var(--clr-error-light);
+  border: 1px solid var(--clr-error);
   border-radius: var(--radius-md);
   padding: var(--space-sm);
 }

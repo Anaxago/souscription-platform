@@ -210,21 +210,21 @@ export default function KnowledgeQuizStep({
             <div key={q.id} style={{
               padding: "var(--space-sm) var(--space-md)",
               borderRadius: "var(--radius-md)",
-              border: `1.5px solid ${userCorrect ? "var(--clr-primary)" : "#c0392b"}`,
-              background: userCorrect ? "rgba(26, 93, 86, 0.04)" : "rgba(192, 57, 43, 0.04)",
+              border: `1.5px solid ${userCorrect ? "var(--clr-primary)" : "var(--clr-error)"}`,
+              background: userCorrect ? "var(--clr-success-light)" : "var(--clr-error-light)",
             }}>
               <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
                 {userCorrect ? (
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="2.5" style={{ flexShrink: 0, marginTop: 2 }}><polyline points="20 6 9 17 4 12" /></svg>
                 ) : (
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c0392b" strokeWidth="2.5" style={{ flexShrink: 0, marginTop: 2 }}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--clr-error)" strokeWidth="2.5" style={{ flexShrink: 0, marginTop: 2 }}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                 )}
                 <p style={{ fontSize: 14, fontWeight: 500, color: "var(--clr-obsidian)", margin: 0 }}>
                   {i + 1}. {q.wording}
                 </p>
               </div>
               <div style={{ marginLeft: 26, fontSize: 13 }}>
-                <p style={{ margin: "2px 0", color: userCorrect ? "var(--clr-primary)" : "#c0392b" }}>
+                <p style={{ margin: "2px 0", color: userCorrect ? "var(--clr-primary)" : "var(--clr-error)" }}>
                   Votre réponse : {selectedLabel}
                 </p>
                 {!userCorrect && (
@@ -247,7 +247,7 @@ export default function KnowledgeQuizStep({
         <div style={{ textAlign: "center", padding: "var(--space-lg) 0" }}>
           <div style={{
             width: 72, height: 72, borderRadius: "50%",
-            background: "rgba(26, 93, 86, 0.1)",
+            background: "var(--clr-success-light)",
             display: "flex", alignItems: "center", justifyContent: "center",
             margin: "0 auto var(--space-md)",
           }}>
@@ -280,11 +280,11 @@ export default function KnowledgeQuizStep({
         <div style={{ textAlign: "center", padding: "var(--space-lg) 0" }}>
           <div style={{
             width: 72, height: 72, borderRadius: "50%",
-            background: "rgba(230, 160, 50, 0.1)",
+            background: "var(--clr-warning-light)",
             display: "flex", alignItems: "center", justifyContent: "center",
             margin: "0 auto var(--space-md)",
           }}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#e6a032" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--clr-warning)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
               <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
             </svg>
@@ -292,7 +292,7 @@ export default function KnowledgeQuizStep({
           <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 400, color: "var(--clr-obsidian)", marginBottom: "var(--space-xs)" }}>
             Quiz validé avec réserves
           </h2>
-          <p style={{ fontSize: 16, color: "#e6a032", fontWeight: 600, marginBottom: "var(--space-sm)" }}>
+          <p style={{ fontSize: 16, color: "var(--clr-warning)", fontWeight: 600, marginBottom: "var(--space-sm)" }}>
             {Math.round(result.score)}% de bonnes réponses
           </p>
           <p style={{ fontSize: 14, color: "var(--clr-cashmere)", maxWidth: 420, margin: "0 auto var(--space-xs)" }}>
@@ -325,18 +325,18 @@ export default function KnowledgeQuizStep({
         <div style={{ textAlign: "center", padding: "var(--space-lg) 0" }}>
           <div style={{
             width: 72, height: 72, borderRadius: "50%",
-            background: "rgba(192, 57, 43, 0.08)",
+            background: "var(--clr-error-light)",
             display: "flex", alignItems: "center", justifyContent: "center",
             margin: "0 auto var(--space-md)",
           }}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#c0392b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--clr-error)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
             </svg>
           </div>
           <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 400, color: "var(--clr-obsidian)", marginBottom: "var(--space-xs)" }}>
             Encore un petit effort
           </h2>
-          <p style={{ fontSize: 16, color: "#c0392b", fontWeight: 600, marginBottom: "var(--space-sm)" }}>
+          <p style={{ fontSize: 16, color: "var(--clr-error)", fontWeight: 600, marginBottom: "var(--space-sm)" }}>
             {Math.round(result.score)}% de bonnes réponses
           </p>
           <p style={{ fontSize: 14, color: "var(--clr-cashmere)", maxWidth: 420, margin: "0 auto var(--space-xs)" }}>
@@ -402,10 +402,10 @@ export default function KnowledgeQuizStep({
                   let bg: string | undefined;
                   if (showCorrect) {
                     borderColor = "var(--clr-primary)";
-                    bg = "rgba(26, 93, 86, 0.06)";
+                    bg = "var(--clr-success-light)";
                   } else if (showWrong) {
-                    borderColor = "#c0392b";
-                    bg = "rgba(192, 57, 43, 0.06)";
+                    borderColor = "var(--clr-error)";
+                    bg = "var(--clr-error-light)";
                   } else if (isSelected) {
                     borderColor = "var(--clr-primary)";
                     bg = "var(--clr-primary-light)";
@@ -426,9 +426,9 @@ export default function KnowledgeQuizStep({
                         style={{ display: "none" }}
                         disabled={hasAnswered}
                       />
-                      <span className="choice-card__radio" style={showCorrect ? { borderColor: "var(--clr-primary)" } : showWrong ? { borderColor: "#c0392b" } : undefined}>
+                      <span className="choice-card__radio" style={showCorrect ? { borderColor: "var(--clr-primary)" } : showWrong ? { borderColor: "var(--clr-error)" } : undefined}>
                         {(isSelected || showCorrect) && (
-                          <span className="choice-card__radio-dot" style={showWrong ? { background: "#c0392b" } : undefined} />
+                          <span className="choice-card__radio-dot" style={showWrong ? { background: "var(--clr-error)" } : undefined} />
                         )}
                       </span>
                       <span className="choice-card__label" style={{ flex: 1 }}>{c.label}</span>
@@ -436,7 +436,7 @@ export default function KnowledgeQuizStep({
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="2.5" style={{ flexShrink: 0 }}><polyline points="20 6 9 17 4 12" /></svg>
                       )}
                       {showWrong && (
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c0392b" strokeWidth="2.5" style={{ flexShrink: 0 }}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--clr-error)" strokeWidth="2.5" style={{ flexShrink: 0 }}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                       )}
                     </label>
                   );
@@ -447,9 +447,9 @@ export default function KnowledgeQuizStep({
                   marginTop: "var(--space-xs)",
                   padding: "var(--space-xs) var(--space-sm)",
                   borderRadius: "var(--radius-sm)",
-                  background: isCorrect ? "rgba(26, 93, 86, 0.06)" : "rgba(192, 57, 43, 0.06)",
+                  background: isCorrect ? "var(--clr-success-light)" : "var(--clr-error-light)",
                   fontSize: 13,
-                  color: isCorrect ? "var(--clr-primary)" : "#c0392b",
+                  color: isCorrect ? "var(--clr-primary)" : "var(--clr-error)",
                   lineHeight: 1.4,
                 }}>
                   {feedbackMsg}
@@ -459,7 +459,7 @@ export default function KnowledgeQuizStep({
                 <div style={{
                   marginTop: "var(--space-xs)",
                   fontSize: 13,
-                  color: isCorrect ? "var(--clr-primary)" : "#c0392b",
+                  color: isCorrect ? "var(--clr-primary)" : "var(--clr-error)",
                   fontWeight: 500,
                 }}>
                   {isCorrect ? "Bonne réponse !" : `La bonne réponse était : ${correctChoice?.label ?? ""}`}
