@@ -235,8 +235,10 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
   const heroImage = product.imageUrl ? toDirectImageUrl(product.imageUrl) : null;
   const videoEmbed = product.videoUrl ? toEmbedVideoUrl(product.videoUrl) : null;
 
-  // Split product name on " - " for multi-line H1
+  // Split product name on " - " — first part is title, rest are labels
   const nameParts = product.name.split(/\s*-\s*/);
+  const mainTitle = nameParts[0];
+  const subLabel = nameParts.length > 1 ? nameParts.slice(1).join(" — ") : null;
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -269,13 +271,11 @@ export default function SouscrireProduit({ loaderData }: Route.ComponentProps) {
               ))}
             </div>
 
+            {subLabel && (
+              <span className="tag" style={{ marginBottom: "var(--space-sm)", display: "inline-block" }}>{subLabel}</span>
+            )}
             <h1 className="text-h1">
-              {nameParts.map((part, i) => (
-                <span key={i}>
-                  {i > 0 && <br />}
-                  {part}
-                </span>
-              ))}
+              {mainTitle}
             </h1>
 
             <p className="hero-tagline">
