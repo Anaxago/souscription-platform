@@ -88,6 +88,14 @@ const STEP_TYPE_DESCRIPTIONS: Record<string, string> = {
   DOCUMENT_REVIEW_AND_SIGNATURE: "Signature électronique des documents",
 };
 
+const RISK_TOLERANCE_LABELS: Record<string, string> = {
+  CONSERVATIVE: "Prudent",
+  MODERATE: "Modéré",
+  BALANCED: "Équilibré",
+  DYNAMIC: "Dynamique",
+  AGGRESSIVE: "Offensif",
+};
+
 const STEP_STATUS_LABELS: Record<string, { label: string; color: string }> = {
   IN_PROGRESS: { label: "En cours", color: "var(--clr-primary)" },
   COMPLETED: { label: "Terminé", color: "var(--clr-primary)" },
@@ -152,14 +160,17 @@ export async function loader({ params }: Route.LoaderArgs) {
   // Parse investor
   let personKernelId: string | null = null;
   let legalEntityKernelId: string | null = null;
+  let riskTolerance: string | null = null;
   if (investorRes.ok) {
     if (journey.investorType === "LEGAL") {
-      const investor = (await investorRes.json()) as { legalEntityKernelId: string; operatedBy: string };
+      const investor = (await investorRes.json()) as { legalEntityKernelId: string; operatedBy: string; riskTolerance?: string | null };
       legalEntityKernelId = investor.legalEntityKernelId;
       personKernelId = investor.operatedBy;
+      riskTolerance = investor.riskTolerance ?? null;
     } else {
-      const investor = (await investorRes.json()) as { personKernelId: string };
+      const investor = (await investorRes.json()) as { personKernelId: string; riskTolerance?: string | null };
       personKernelId = investor.personKernelId;
+      riskTolerance = investor.riskTolerance ?? null;
     }
   }
 
@@ -198,7 +209,7 @@ export async function loader({ params }: Route.LoaderArgs) {
     marketingProduct = { ...p, shares };
   }
 
-  return { journey, slug, personKernelId, legalEntityKernelId, marketingProduct, eligibleEnvelopes };
+  return { journey, slug, personKernelId, legalEntityKernelId, marketingProduct, eligibleEnvelopes, riskTolerance };
 }
 
 export function headers() {
@@ -217,7 +228,7 @@ export function meta({ data }: Route.MetaArgs) {
    ────────────────────────────────────────────── */
 
 export default function ParcoursSouscription({ loaderData }: Route.ComponentProps) {
-  const { journey, slug, personKernelId, legalEntityKernelId, marketingProduct, eligibleEnvelopes } = loaderData;
+  const { journey, slug, personKernelId, legalEntityKernelId, marketingProduct, eligibleEnvelopes, riskTolerance } = loaderData;
   const revalidator = useRevalidator();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -399,6 +410,24 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
               <div className="journey-sidebar__progress-fill" style={{ width: `${progress}%` }} />
             </div>
           </div>
+
+          {riskTolerance && (
+            <div style={{
+              display: "flex", alignItems: "center", gap: "var(--space-xs)",
+              padding: "var(--space-sm) var(--space-md)",
+              background: "var(--clr-primary-light)",
+              borderRadius: "var(--radius-md)",
+              marginBottom: "var(--space-md)",
+            }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+              </svg>
+              <span style={{ fontSize: 13, color: "var(--clr-cashmere)" }}>Profil :</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--clr-primary)" }}>
+                {RISK_TOLERANCE_LABELS[riskTolerance] ?? riskTolerance}
+              </span>
+            </div>
+          )}
 
           <nav className="journey-stepper">
             {applicableSteps.map((step, i) => {
