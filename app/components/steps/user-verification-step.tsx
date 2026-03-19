@@ -114,6 +114,8 @@ export default function UserVerificationStep({
     return init;
   });
 
+  const [submitted, setSubmitted] = useState(false);
+
   // Documents
   const [uploading, setUploading] = useState<string | null>(null);
   const [uploadedDocs, setUploadedDocs] = useState<UploadedDoc[]>([]);
@@ -309,17 +311,11 @@ export default function UserVerificationStep({
         }
       }
 
-      // Set user-verification status to trigger step auto-completion
-      let verificationOk = false;
+      // Set user-verification status
       try {
-        const verResult = await callAction({
-          type: "user-verification",
-          journeyId,
-        });
-        console.log("user-verification result:", JSON.stringify(verResult));
-        verificationOk = true;
-      } catch (e) {
-        console.error("user-verification failed:", e);
+        await callAction({ type: "user-verification", journeyId });
+      } catch {
+        // Best-effort
       }
 
       // Try to complete the step explicitly
@@ -339,12 +335,8 @@ export default function UserVerificationStep({
         console.warn("Question errors:", questionErrors);
       }
 
-      if (!verificationOk) {
-        setError("Vos informations ont été enregistrées. La vérification d'identité est en cours de traitement.");
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      }
-
-      onComplete();
+      setSubmitted(true);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Erreur lors de la validation";
       setError(msg);
@@ -374,6 +366,36 @@ export default function UserVerificationStep({
   );
   const isQuestionsValid = requiredQuestions.every((q) => verificationAnswers[q]?.trim());
   const isFormValid = isPersonValid && isCompanyValid && isQuestionsValid;
+
+  // ── Submitted confirmation screen ──
+  if (submitted) {
+    return (
+      <div className="step-panel">
+        <div style={{ textAlign: "center", padding: "var(--space-lg) 0" }}>
+          <div style={{
+            width: 72, height: 72, borderRadius: "50%",
+            background: "rgba(26, 93, 86, 0.1)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            margin: "0 auto var(--space-md)",
+          }}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 400, color: "var(--clr-obsidian)", marginBottom: "var(--space-xs)" }}>
+            Informations enregistrées
+          </h2>
+          <p style={{ fontSize: 15, color: "var(--clr-cashmere)", maxWidth: 420, margin: "0 auto var(--space-lg)" }}>
+            Vos informations ont été soumises avec succès. La vérification d'identité est en cours de traitement.
+            Vous serez notifié une fois la validation terminée.
+          </p>
+          <button className="btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={onComplete}>
+            Continuer
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="step-panel">
