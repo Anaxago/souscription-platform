@@ -12,7 +12,9 @@ interface Props {
 }
 
 interface Choice {
-  choiceId: string;
+  id?: string;
+  choiceId?: string;
+  choiceKey?: string;
   label: string;
 }
 
@@ -87,6 +89,10 @@ export default function KnowledgeQuizStep({
     fetchQuiz();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [financialInstrumentId]);
+
+  function getChoiceKey(c: Choice): string {
+    return c.choiceKey ?? c.choiceId ?? c.id ?? "";
+  }
 
   function handleSelect(questionId: string, choiceId: string, type: string) {
     setAnswers((prev) => {
@@ -229,9 +235,10 @@ export default function KnowledgeQuizStep({
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-xs)" }}>
                 {q.choices.map((c) => {
-                  const isSelected = selected.includes(c.choiceId);
+                  const key = getChoiceKey(c);
+                  const isSelected = selected.includes(key);
                   return (
-                    <label key={c.choiceId} className="choice-card" style={{
+                    <label key={key} className="choice-card" style={{
                       borderColor: isSelected ? "var(--clr-primary)" : undefined,
                       background: isSelected ? "var(--clr-primary-light)" : undefined,
                     }}>
@@ -239,7 +246,7 @@ export default function KnowledgeQuizStep({
                         type={q.type === "MULTIPLE_CHOICE" ? "checkbox" : "radio"}
                         name={`quiz-${q.id}`}
                         checked={isSelected}
-                        onChange={() => handleSelect(q.id, c.choiceId, q.type)}
+                        onChange={() => handleSelect(q.id, key, q.type)}
                         style={{ display: "none" }}
                       />
                       <span className="choice-card__radio">
