@@ -607,16 +607,18 @@ export default function UserVerificationStep({
       {requiredQuestions.length > 0 && (
         <div style={{ marginBottom: "var(--space-lg)" }}>
           <h3 style={sectionTitle}>Déclarations réglementaires</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-lg)" }}>
             {requiredQuestions.map((qType) => {
               const isYesNo = qType === "IS_US_PERSON" || qType === "IS_POLITICALLY_EXPOSED";
               const label = VERIFICATION_QUESTION_LABELS[qType] ?? qType;
               const currentAnswer = verificationAnswers[qType] ?? "";
 
+              const questionLabelStyle = { fontSize: 15, fontWeight: 500 as const, color: "var(--clr-obsidian)", marginBottom: 6, display: "block" as const };
+
               if (isYesNo) {
                 return (
                   <div key={qType}>
-                    <label className="form-label">{label} *</label>
+                    <label style={questionLabelStyle}>{label} *</label>
                     <div style={{ display: "flex", gap: "var(--space-sm)" }}>
                       {[{ value: "NO", label: "Non" }, { value: "YES", label: "Oui" }].map((opt) => (
                         <label key={opt.value} className="choice-card" style={{
@@ -644,7 +646,7 @@ export default function UserVerificationStep({
               if (options) {
                 return (
                   <div key={qType}>
-                    <label className="form-label" htmlFor={`vq-${qType}`}>{label} *</label>
+                    <label style={questionLabelStyle} htmlFor={`vq-${qType}`}>{label} *</label>
                     <select
                       id={`vq-${qType}`}
                       className="form-input"
@@ -662,7 +664,7 @@ export default function UserVerificationStep({
 
               return (
                 <div key={qType}>
-                  <label className="form-label" htmlFor={`vq-${qType}`}>{label} *</label>
+                  <label style={questionLabelStyle} htmlFor={`vq-${qType}`}>{label} *</label>
                   <input
                     id={`vq-${qType}`}
                     className="form-input"
