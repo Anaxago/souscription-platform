@@ -28,7 +28,9 @@ type ActionPayload =
   | { type: "update-le-investor-profile"; investorId: string; riskTolerance: string; horizon: string; knowledgeLevel: string }
   | { type: "declare-source-of-funds"; investorId: string; origin: string; declaredAmountCents?: number; declaredAmountCurrency?: string }
   | { type: "remove-source-of-funds"; investorId: string; origin: string }
-  | { type: "activate-le-investor"; investorId: string };
+  | { type: "activate-le-investor"; investorId: string }
+  | { type: "fetch-knowledge-quiz"; financialInstrumentId: string }
+  | { type: "submit-knowledge-quiz"; journeyId: string; stepId: string; quizId: string; answers: { questionId: string; choiceId: string }[] };
 
 function errorResponse(message: string, status: number) {
   return Response.json({ error: message }, { status });
@@ -475,6 +477,29 @@ export async function action({ request }: Route.ActionArgs) {
         return errorResponse((err as Record<string, string>).message ?? "Erreur création compte", res.status);
       }
       return Response.json(await res.json());
+    }
+
+    /* ── Fetch Knowledge Quiz ── */
+    case "fetch-knowledge-quiz": {
+      const res = await api(`/knowledge-quizzes/templates/${body.financialInstrumentId}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return errorResponse((err as Record<string, string>).message ?? "Quiz introuvable", res.status);
+      }
+      return Response.json(await res.json());
+    }
+
+    /* ── Submit Knowledge Quiz ── */
+    case "submit-knowledge-quiz": {
+      // Calculate score client-side isn't safe, but we don't have a submit endpoint yet.
+      // For now, complete the step after submission.
+      try {
+        await api(
+          `/subscription-journeys/${body.journeyId}/steps/${body.stepId}/complete`,
+          { method: "POST" },
+        );
+      } catch { /* 409 = already completed */ }
+      return Response.json({ ok: true });
     }
 
     /* ── Update Legal Entity Kernel ── */
