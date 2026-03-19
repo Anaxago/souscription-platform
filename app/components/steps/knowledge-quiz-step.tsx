@@ -33,9 +33,14 @@ interface QuizTemplate {
   warningThreshold: number;
 }
 
-interface EvaluateResult {
+interface QuizResult {
   score: number;
   outcome: "APPROVED" | "WARNING" | "BLOCKED";
+  totalQuestions: number;
+}
+
+function getChoiceKey(c: Choice): string {
+  return c.choiceKey ?? c.choiceId ?? c.id ?? "";
 }
 
 export default function KnowledgeQuizStep({
@@ -53,7 +58,7 @@ export default function KnowledgeQuizStep({
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<EvaluateResult | null>(null);
+  const [result, setResult] = useState<QuizResult | null>(null);
 
   async function callAction(payload: Record<string, unknown>) {
     const res = await fetch(actionUrl, {
@@ -79,7 +84,6 @@ export default function KnowledgeQuizStep({
           type: "fetch-knowledge-quiz",
           financialInstrumentId,
         });
-        console.log("Quiz data:", JSON.stringify((data as QuizTemplate).questions[0]?.choices[0]));
         setQuiz(data as QuizTemplate);
       } catch {
         setError("Impossible de charger le quiz.");
@@ -90,10 +94,6 @@ export default function KnowledgeQuizStep({
     fetchQuiz();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [financialInstrumentId]);
-
-  function getChoiceKey(c: Choice): string {
-    return c.choiceKey ?? c.choiceId ?? c.id ?? "";
-  }
 
   function handleSelect(questionId: string, choiceId: string, type: string) {
     setAnswers((prev) => {
@@ -109,7 +109,6 @@ export default function KnowledgeQuizStep({
   }
 
   async function handleSubmit() {
-    console.log("handleSubmit called, answers:", answers, "allAnswered:", allAnswered);
     if (!quiz) return;
     setSubmitting(true);
     setError(null);
@@ -127,17 +126,18 @@ export default function KnowledgeQuizStep({
           selectedChoiceKeys: answers[q.id] ?? [],
         })),
       });
-      // Response is the full journey — find this step's state for the outcome
+
       const journeyData = evalResult as { steps?: { id: string; state?: { outcome?: string; score?: number } }[] };
       const thisStep = journeyData.steps?.find((s) => s.id === stepId);
-      const outcome = thisStep?.state?.outcome ?? "";
+      const outcome = (thisStep?.state?.outcome ?? "") as QuizResult["outcome"];
       const score = thisStep?.state?.score ?? 0;
-      setResult({ score, outcome: outcome as EvaluateResult["outcome"] });
-      // Step auto-completes on APPROVED/WARNING — just revalidate
-      onComplete();
+      const totalQuestions = quiz.questions.length;
+
+      setResult({ score, outcome, totalQuestions });
+
+      // Don't auto-advance — show the result screen first
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Erreur inconnue";
-      console.error("Knowledge quiz error:", msg, e);
       setError(msg);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } finally {
@@ -151,6 +151,7 @@ export default function KnowledgeQuizStep({
     setError(null);
   }
 
+  // ── Loading ──
   if (loading) {
     return (
       <div className="step-panel">
@@ -161,6 +162,7 @@ export default function KnowledgeQuizStep({
     );
   }
 
+  // ── No quiz available ──
   if (!quiz || quiz.questions.length === 0) {
     return (
       <div className="step-panel">
@@ -187,35 +189,123 @@ export default function KnowledgeQuizStep({
 
   const questions = [...quiz.questions].sort((a, b) => a.position - b.position);
   const allAnswered = questions.every((q) => (answers[q.id]?.length ?? 0) > 0);
-  console.log("Quiz state:", { answers, allAnswered, questionIds: questions.map((q) => q.id) });
+  const correctCount = result ? Math.round((result.score / 100) * result.totalQuestions) : 0;
+  const missedCount = result ? result.totalQuestions - correctCount : 0;
 
-  // Blocked result — show score and retry
-  if (result?.outcome === "BLOCKED") {
+  // ── Result: APPROVED ──
+  if (result?.outcome === "APPROVED") {
     return (
       <div className="step-panel">
-        <div className="step-panel__header">
-          <div className="step-panel__icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#c0392b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
+        <div style={{ textAlign: "center", padding: "var(--space-lg) 0" }}>
+          <div style={{
+            width: 72, height: 72, borderRadius: "50%",
+            background: "rgba(26, 93, 86, 0.1)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            margin: "0 auto var(--space-md)",
+          }}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
-          <div>
-            <h2 className="step-panel__title">Score insuffisant</h2>
-            <p className="step-panel__desc">
-              Votre score est de {Math.round(result.score)}%. Le seuil minimum est de {quiz.warningThreshold}%.
-            </p>
-          </div>
+          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 400, color: "var(--clr-obsidian)", marginBottom: "var(--space-xs)" }}>
+            Quiz validé
+          </h2>
+          <p style={{ fontSize: 16, color: "var(--clr-primary)", fontWeight: 600, marginBottom: "var(--space-sm)" }}>
+            {Math.round(result.score)}% de bonnes réponses
+          </p>
+          <p style={{ fontSize: 14, color: "var(--clr-cashmere)", maxWidth: 400, margin: "0 auto var(--space-lg)" }}>
+            Vous avez démontré une bonne compréhension du produit. Vous pouvez poursuivre votre souscription.
+          </p>
+          <button className="btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={onComplete}>
+            Continuer
+          </button>
         </div>
-        <p style={{ fontSize: 14, color: "var(--clr-cashmere)", marginBottom: "var(--space-lg)" }}>
-          Vous pouvez retenter le quiz pour améliorer votre score.
-        </p>
-        <button className="btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleRetry}>
-          Recommencer le quiz
-        </button>
       </div>
     );
   }
 
+  // ── Result: WARNING ──
+  if (result?.outcome === "WARNING") {
+    return (
+      <div className="step-panel">
+        <div style={{ textAlign: "center", padding: "var(--space-lg) 0" }}>
+          <div style={{
+            width: 72, height: 72, borderRadius: "50%",
+            background: "rgba(230, 160, 50, 0.1)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            margin: "0 auto var(--space-md)",
+          }}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#e6a032" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+              <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+          </div>
+          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 400, color: "var(--clr-obsidian)", marginBottom: "var(--space-xs)" }}>
+            Quiz validé avec réserves
+          </h2>
+          <p style={{ fontSize: 16, color: "#e6a032", fontWeight: 600, marginBottom: "var(--space-sm)" }}>
+            {Math.round(result.score)}% de bonnes réponses
+          </p>
+          <p style={{ fontSize: 14, color: "var(--clr-cashmere)", maxWidth: 420, margin: "0 auto var(--space-xs)" }}>
+            {missedCount > 0
+              ? `Il vous manquait ${missedCount} bonne${missedCount > 1 ? "s" : ""} réponse${missedCount > 1 ? "s" : ""} pour un score optimal.`
+              : "Votre score est suffisant mais mérite attention."}
+          </p>
+          <p style={{ fontSize: 14, color: "var(--clr-cashmere)", maxWidth: 420, margin: "0 auto var(--space-lg)" }}>
+            Nous vous recommandons de consulter la documentation du produit avant de finaliser votre investissement.
+          </p>
+          <button className="btn-primary" style={{ width: "100%", justifyContent: "center", marginBottom: "var(--space-sm)" }} onClick={onComplete}>
+            Continuer malgré l'avertissement
+          </button>
+          <button
+            style={{ width: "100%", padding: "var(--space-sm)", background: "none", border: "1.5px solid var(--clr-primary)", borderRadius: "var(--radius-md)", color: "var(--clr-primary)", cursor: "pointer", fontSize: 14, fontWeight: 500 }}
+            onClick={handleRetry}
+          >
+            Recommencer le quiz
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Result: BLOCKED ──
+  if (result?.outcome === "BLOCKED") {
+    return (
+      <div className="step-panel">
+        <div style={{ textAlign: "center", padding: "var(--space-lg) 0" }}>
+          <div style={{
+            width: 72, height: 72, borderRadius: "50%",
+            background: "rgba(192, 57, 43, 0.08)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            margin: "0 auto var(--space-md)",
+          }}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#c0392b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
+            </svg>
+          </div>
+          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 400, color: "var(--clr-obsidian)", marginBottom: "var(--space-xs)" }}>
+            Encore un petit effort
+          </h2>
+          <p style={{ fontSize: 16, color: "#c0392b", fontWeight: 600, marginBottom: "var(--space-sm)" }}>
+            {Math.round(result.score)}% de bonnes réponses
+          </p>
+          <p style={{ fontSize: 14, color: "var(--clr-cashmere)", maxWidth: 420, margin: "0 auto var(--space-xs)" }}>
+            {missedCount > 0
+              ? `Il vous manquait ${missedCount} bonne${missedCount > 1 ? "s" : ""} réponse${missedCount > 1 ? "s" : ""} pour valider cette étape.`
+              : "Votre score est en dessous du seuil requis."}
+          </p>
+          <p style={{ fontSize: 14, color: "var(--clr-cashmere)", maxWidth: 420, margin: "0 auto var(--space-lg)" }}>
+            Prenez le temps de réviser les notions clés avant de réessayer. Vous pouvez consulter la documentation du produit pour vous aider.
+          </p>
+          <button className="btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleRetry}>
+            Recommencer le quiz
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Quiz form ──
   return (
     <div className="step-panel">
       <div className="step-panel__header">
