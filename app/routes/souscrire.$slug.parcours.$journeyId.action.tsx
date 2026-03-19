@@ -437,7 +437,8 @@ export async function action({ request }: Route.ActionArgs) {
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         if (res.status === 409) return Response.json({ ok: true });
-        return errorResponse((err as Record<string, string>).message ?? "Erreur création personne", res.status);
+        const details = JSON.stringify(err);
+        return errorResponse(`Erreur création personne: ${(err as Record<string, string>).message ?? details}`, res.status);
       }
       return Response.json(await res.json());
     }
