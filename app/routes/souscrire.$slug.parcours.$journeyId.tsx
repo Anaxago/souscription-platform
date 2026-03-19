@@ -201,6 +201,10 @@ export async function loader({ params }: Route.LoaderArgs) {
   return { journey, slug, personKernelId, legalEntityKernelId, marketingProduct, eligibleEnvelopes };
 }
 
+export function headers() {
+  return { "Cache-Control": "private, no-store" };
+}
+
 export function meta({ data }: Route.MetaArgs) {
   if (!data) {
     return [{ title: "Parcours introuvable — Stanza" }];

@@ -60,34 +60,37 @@
 
 /* ──────────────────────────────────────────────
    Animations — Wealth Management 3.0
+   GPU-accelerated: only animate transform + opacity
    ────────────────────────────────────────────── */
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translate3d(0, 12px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
 }
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 @keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+  from { opacity: 0; transform: scale3d(0.96, 0.96, 1); }
+  to { opacity: 1; transform: scale3d(1, 1, 1); }
 }
 @keyframes slideInRight {
-  from { opacity: 0; transform: translateX(24px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-@keyframes progressGrow {
-  from { width: 0; }
+  from { opacity: 0; transform: translate3d(20px, 0, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
 }
 @keyframes checkPop {
-  0% { transform: scale(0); opacity: 0; }
-  60% { transform: scale(1.2); }
-  100% { transform: scale(1); opacity: 1; }
+  0% { transform: scale3d(0, 0, 1); opacity: 0; }
+  60% { transform: scale3d(1.15, 1.15, 1); }
+  100% { transform: scale3d(1, 1, 1); opacity: 1; }
 }
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+
+/* Respect user preference for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* ──────────────────────────────────────────────
@@ -829,7 +832,9 @@ html, body {
   font-family: var(--font-display); font-size: 14px; font-weight: 600;
   color: var(--clr-off-white); background: var(--clr-primary);
   border: 1px solid var(--clr-primary); border-radius: var(--radius-pill);
-  padding: 14px 28px; transition: var(--transition-fast);
+  padding: 14px 28px;
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s var(--ease-out-quart), box-shadow 0.2s ease;
+  will-change: transform;
   text-decoration: none; cursor: pointer;
   border-style: solid;
 }
@@ -1260,12 +1265,12 @@ html, body {
   align-items: center;
   gap: 14px;
   padding: 16px var(--space-md);
-  transition: all 0.25s var(--ease-out-quart);
+  transition: transform 0.2s var(--ease-out-quart), border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+  will-change: transform;
   background: var(--clr-ecru-bg);
   border: 1px solid var(--clr-stroke-dark);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: var(--transition-fast);
 }
 .choice-card:hover {
   border-color: var(--clr-cashmere);
@@ -1372,13 +1377,13 @@ html, body {
   border: 1px solid var(--clr-stroke-dark);
   border-radius: var(--radius-md);
   padding: 14px var(--space-sm);
-  transition: border-color 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
   box-sizing: border-box;
 }
 .form-input:focus {
   outline: none;
   border-color: var(--clr-primary);
-  box-shadow: 0 0 0 3px rgba(26, 93, 86, 0.1);
+  box-shadow: 0 0 0 3px var(--clr-success-light);
 }
 .form-input::placeholder {
   color: var(--clr-stroke-light);
