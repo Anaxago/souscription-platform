@@ -413,8 +413,16 @@ export async function action({ request }: Route.ActionArgs) {
       return Response.json(await validateRes.json());
     }
 
-    /* ── Create full Person (identity + address) ── */
+    /* ── Create full Person (identity + address) — idempotent ── */
     case "create-person": {
+      // Check if a person already exists for this kernel (avoid duplicates on retry)
+      const existingRes = await api(`/persons?pageSize=50`);
+      if (existingRes.ok) {
+        const existingBody = (await existingRes.json()) as { data: { id: string; personKernelId: string | null }[] };
+        const existing = existingBody.data?.find((p) => p.personKernelId === body.personKernelId);
+        if (existing) return Response.json({ id: existing.id });
+      }
+
       const res = await api("/persons", {
         method: "POST",
         body: JSON.stringify({
@@ -428,19 +436,7 @@ export async function action({ request }: Route.ActionArgs) {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        // Conflict — person already exists for this kernel, fetch existing person ID
-        if (res.status === 409) {
-          const existingId = (err as Record<string, string>).id;
-          if (existingId) return Response.json({ id: existingId });
-          // Fallback: search persons to find the one matching this kernel
-          const searchRes = await api(`/persons?pageSize=1`);
-          if (searchRes.ok) {
-            const searchBody = (await searchRes.json()) as { data: { id: string; personKernelId: string | null }[] };
-            const match = searchBody.data?.find((p) => p.personKernelId === body.personKernelId);
-            if (match) return Response.json({ id: match.id });
-          }
-          return Response.json({ ok: true });
-        }
+        if (res.status === 409) return Response.json({ ok: true });
         return errorResponse((err as Record<string, string>).message ?? "Erreur création personne", res.status);
       }
       return Response.json(await res.json());
