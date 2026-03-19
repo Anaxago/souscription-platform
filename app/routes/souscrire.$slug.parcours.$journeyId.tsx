@@ -333,7 +333,8 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
       return <DismembermentSelectionStep journeyId={journey.id} stepId={step.id} actionUrl={actionUrl} onComplete={onStepComplete} />;
     }
     if (step.stepType === "ADEQUACY_CHECK") {
-      return <AdequacyCheckStep journeyId={journey.id} stepId={step.id} investorType={journey.investorType} state={step.state as { lastCheckId: string | null; result: "ADEQUATE" | "NEUTRAL" | "INADEQUATE" | "INCOMPLETE_PROFILE" | "OVERRIDDEN" | null; overridden: boolean } | null} actionUrl={actionUrl} onComplete={onStepComplete} />;
+      const basketData = journey.basket as unknown as { lines: { requestedAmount: number | null }[]; envelopeTarget: { envelopeType: string } | null } | null;
+      return <AdequacyCheckStep journeyId={journey.id} stepId={step.id} investorType={journey.investorType} productName={marketingProduct?.name ?? null} envelopeType={basketData?.envelopeTarget?.envelopeType ?? null} amount={basketData?.lines?.[0]?.requestedAmount ?? null} state={step.state as { lastCheckId: string | null; result: "ADEQUATE" | "NEUTRAL" | "INADEQUATE" | "INCOMPLETE_PROFILE" | "OVERRIDDEN" | null; overridden: boolean } | null} actionUrl={actionUrl} onComplete={onStepComplete} />;
     }
     if (step.stepType === "DOCUMENT_UPLOAD") {
       return <DocumentUploadStep journeyId={journey.id} stepId={step.id} config={step.config as { requiredDocumentTypes: string[] | null } | null} state={step.state as { uploadedDocuments: { documentId: string; documentType: string; fileName: string; uploadedAt: string }[] } | null} actionUrl={actionUrl} onComplete={onStepComplete} />;
