@@ -127,15 +127,14 @@ export default function KnowledgeQuizStep({
           selectedChoiceKeys: answers[q.id] ?? [],
         })),
       });
-      console.log("Evaluate result:", JSON.stringify(evalResult));
-      const raw = evalResult as Record<string, unknown>;
-      const outcome = (raw.outcome ?? raw.result ?? "") as string;
-      const score = (raw.score ?? 0) as number;
-      const res: EvaluateResult = { score, outcome: outcome as EvaluateResult["outcome"] };
-      setResult(res);
-      if (outcome === "APPROVED" || outcome === "WARNING") {
-        onComplete();
-      }
+      // Response is the full journey — find this step's state for the outcome
+      const journeyData = evalResult as { steps?: { id: string; state?: { outcome?: string; score?: number } }[] };
+      const thisStep = journeyData.steps?.find((s) => s.id === stepId);
+      const outcome = thisStep?.state?.outcome ?? "";
+      const score = thisStep?.state?.score ?? 0;
+      setResult({ score, outcome: outcome as EvaluateResult["outcome"] });
+      // Step auto-completes on APPROVED/WARNING — just revalidate
+      onComplete();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Erreur inconnue";
       console.error("Knowledge quiz error:", msg, e);
