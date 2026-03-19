@@ -481,7 +481,8 @@ export async function action({ request }: Route.ActionArgs) {
 
     /* ── Fetch Knowledge Quiz ── */
     case "fetch-knowledge-quiz": {
-      const res = await api(`/knowledge-quizzes/by-financial-instrument/${body.financialInstrumentId}`);
+      // Use templates endpoint which includes isCorrect for immediate feedback
+      const res = await api(`/knowledge-quizzes/templates/${body.financialInstrumentId}`);
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         return errorResponse((err as Record<string, string>).message ?? "Quiz introuvable", res.status);
