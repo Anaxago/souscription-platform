@@ -35,8 +35,13 @@ const CATEGORY_LABELS: Record<string, string> = {
   HORIZON: "Horizon de placement",
   LOSS_CAPACITY: "Capacité de perte",
   ESG_PREFERENCE: "Préférences ESG",
+  TAXONOMY_PREFERENCE: "Préférences Taxonomie",
+  PAI_CONSIDERATION: "Impacts négatifs (PAI)",
   RISK_PROFILE: "Profil de risque",
   MIFID_CLASSIFICATION: "Classification MiFID",
+  FINANCIAL_KNOWLEDGE: "Connaissances financières",
+  FINANCIAL_EXPERIENCE: "Expérience financière",
+  US_PERSON: "US Person",
 };
 
 // Order categories for a natural flow
@@ -48,6 +53,10 @@ const CATEGORY_ORDER = [
   "EXPERIENCE",
   "KNOWLEDGE",
   "ESG_PREFERENCE",
+  "TAXONOMY_PREFERENCE",
+  "PAI_CONSIDERATION",
+  "RISK_PROFILE",
+  "MIFID_CLASSIFICATION",
 ];
 
 export default function InvestorProfileStep({
