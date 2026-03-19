@@ -165,6 +165,16 @@ export default function InvestorProfileStep({
 
   function handleSingleAnswer(questionId: string, choiceKey: string) {
     setAnswers((prev) => ({ ...prev, [questionId]: choiceKey }));
+    // Auto-scroll to next question
+    if (currentCat) {
+      const qIndex = currentCat.questions.findIndex((q) => q.id === questionId);
+      const nextQ = currentCat.questions[qIndex + 1];
+      if (nextQ) {
+        setTimeout(() => {
+          document.getElementById(`q-${nextQ.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 150);
+      }
+    }
   }
 
   function handleMultipleAnswer(questionId: string, choiceKey: string) {
@@ -218,11 +228,16 @@ export default function InvestorProfileStep({
             }
           }
         }
-        // All categories done — try to complete the step (409 handled server-side)
-        await callAction({ type: "complete", journeyId, stepId });
+        // All categories done — try to complete the step
+        try {
+          await callAction({ type: "complete", journeyId, stepId });
+        } catch {
+          // Step may auto-complete from backend
+        }
         onComplete();
       } else {
         setCurrentCatIndex((i) => i + 1);
+        window.scrollTo({ top: 0, behavior: "smooth" });
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur");
@@ -302,7 +317,7 @@ export default function InvestorProfileStep({
       {currentCat && (
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-lg)" }}>
           {currentCat.questions.map((q, qi) => (
-            <div key={q.id}>
+            <div key={q.id} id={`q-${q.id}`}>
               <label className="form-label" style={{ fontSize: 13, textTransform: "none", letterSpacing: "normal" }}>
                 {questionsBeforeCurrent + qi + 1}. {q.wording}
               </label>

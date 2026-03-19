@@ -301,6 +301,7 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
   const onStepComplete = () => {
     setOverrideStepId(null);
     revalidator.revalidate();
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   // Show overridden step or current step
