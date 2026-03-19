@@ -292,6 +292,7 @@ export default function UserVerificationStep({
       }
 
       // Submit verification questions one by one
+      const questionErrors: string[] = [];
       for (const questionType of requiredQuestions) {
         const answer = verificationAnswers[questionType];
         if (answer) {
@@ -302,20 +303,22 @@ export default function UserVerificationStep({
               questionType,
               answer,
             });
-          } catch {
-            // Best-effort — continue with remaining questions
+          } catch (e) {
+            questionErrors.push(`${questionType}: ${e instanceof Error ? e.message : "erreur"}`);
           }
         }
       }
 
       // Set user-verification status to trigger step auto-completion
+      let verificationOk = false;
       try {
         await callAction({
           type: "user-verification",
           journeyId,
         });
-      } catch {
-        // Best-effort
+        verificationOk = true;
+      } catch (e) {
+        console.error("user-verification failed:", e);
       }
 
       // Try to complete the step explicitly
@@ -325,9 +328,20 @@ export default function UserVerificationStep({
           journeyId,
           stepId,
         });
-      } catch {
-        // Step may auto-complete via kycStatus
+      } catch (e) {
+        console.error("complete-verification failed:", e);
       }
+
+      // Show warnings if questions failed
+      if (questionErrors.length > 0) {
+        console.warn("Question errors:", questionErrors);
+      }
+
+      if (!verificationOk) {
+        setError("Vos informations ont été enregistrées. La vérification d'identité est en cours de traitement.");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
       onComplete();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Erreur lors de la validation";
