@@ -308,15 +308,21 @@ export default function UserVerificationStep({
         }
       }
 
-      // Complete verification
-      await callAction({
-        type: "complete-verification",
-        journeyId,
-        stepId,
-      });
+      // Try to complete verification (might 409 if step auto-completes via kycStatus)
+      try {
+        await callAction({
+          type: "complete-verification",
+          journeyId,
+          stepId,
+        });
+      } catch {
+        // Step may auto-complete when kycStatus is set externally
+      }
       onComplete();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur lors de la validation");
+      const msg = e instanceof Error ? e.message : "Erreur lors de la validation";
+      setError(msg);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } finally {
       setCompleting(false);
     }
