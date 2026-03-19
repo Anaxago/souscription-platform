@@ -199,15 +199,15 @@ export async function loader({ params }: Route.LoaderArgs) {
 
 export function meta({ data }: Route.MetaArgs) {
   if (!data) {
-    return [{ title: "Produit introuvable — Anaxago" }];
+    return [{ title: "Produit introuvable — Stanza" }];
   }
   return [
-    { title: `${data.product.name} — Souscrire — Anaxago` },
+    { title: `${data.product.name} — Souscrire — Stanza` },
     {
       name: "description",
       content:
         data.product.shortDescription ??
-        `Souscrivez au produit ${data.product.name} sur Anaxago`,
+        `Souscrivez au produit ${data.product.name} sur Stanza`,
     },
   ];
 }
@@ -698,7 +698,7 @@ function NavBar() {
   return (
     <nav id="ds4-nav" className="nav-bar">
       <a className="nav-logo-text" href="/">
-        Anaxago
+        Stanza
       </a>
     </nav>
   );

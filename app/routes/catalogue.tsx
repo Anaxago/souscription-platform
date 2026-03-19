@@ -131,7 +131,7 @@ export async function loader() {
 
 export function meta() {
   return [
-    { title: "Catalogue — Investissements — Anaxago" },
+    { title: "Catalogue — Investissements — Stanza" },
     { name: "description", content: "Découvrez nos opportunités d'investissement : SCPI, produits structurés, assurance-vie et plus." },
   ];
 }
@@ -142,7 +142,7 @@ export default function Catalogue({ loaderData }: Route.ComponentProps) {
   return (
     <div className="ds4-body">
       <nav className="nav-bar scrolled">
-        <a className="nav-logo-text" href="/">Anaxago</a>
+        <a className="nav-logo-text" href="/">Stanza</a>
       </nav>
 
       {/* Hero */}

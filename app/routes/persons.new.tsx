@@ -4,7 +4,7 @@ import { api } from "~/lib/api.server";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "Créer une personne Kernel — Anaxago" },
+    { title: "Créer une personne Kernel — Stanza" },
     { name: "description", content: "Créer une personne Kernel" },
   ];
 }
@@ -87,7 +87,7 @@ export default function NewPerson() {
                 </div>
                 {actionData.person.legacyAppId && (
                   <div className="flex gap-2">
-                    <dt className="font-medium">ID Anaxago :</dt>
+                    <dt className="font-medium">ID Stanza :</dt>
                     <dd className="font-mono">
                       {actionData.person.legacyAppId}
                     </dd>
@@ -143,7 +143,7 @@ export default function NewPerson() {
                 htmlFor="legacyAppId"
                 className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
               >
-                ID Anaxago
+                ID Stanza
               </label>
               <input
                 id="legacyAppId"

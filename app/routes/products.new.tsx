@@ -17,7 +17,7 @@ const PRODUCT_TYPES = [
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "Nouveau produit Kernel — Anaxago" },
+    { title: "Nouveau produit Kernel — Stanza" },
     { name: "description", content: "Créer un produit Kernel" },
   ];
 }

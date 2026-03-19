@@ -52,7 +52,7 @@ export async function loader({ params }: Route.LoaderArgs) {
 }
 
 export function meta() {
-  return [{ title: "Démarrage de la souscription — Anaxago" }];
+  return [{ title: "Démarrage de la souscription — Stanza" }];
 }
 
 /* ──────────────────────────────────────────────
@@ -179,7 +179,7 @@ export default function DemarrerSouscription({ loaderData, actionData }: Route.C
   return (
     <div className="ds4-body">
       <nav className="nav-bar scrolled">
-        <a className="nav-logo-text" href="/">Anaxago</a>
+        <a className="nav-logo-text" href="/">Stanza</a>
       </nav>
 
       <main style={{ paddingTop: 100 }}>

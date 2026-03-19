@@ -203,9 +203,9 @@ export async function loader({ params }: Route.LoaderArgs) {
 
 export function meta({ data }: Route.MetaArgs) {
   if (!data) {
-    return [{ title: "Parcours introuvable — Anaxago" }];
+    return [{ title: "Parcours introuvable — Stanza" }];
   }
-  return [{ title: "Parcours de souscription — Anaxago" }];
+  return [{ title: "Parcours de souscription — Stanza" }];
 }
 
 /* ──────────────────────────────────────────────
@@ -360,7 +360,7 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
   return (
     <div className="ds4-body">
       <nav className="nav-bar scrolled">
-        <a className="nav-logo-text" href="/">Anaxago</a>
+        <a className="nav-logo-text" href="/">Stanza</a>
       </nav>
 
       <main className="journey-layout">
