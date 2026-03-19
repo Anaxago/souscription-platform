@@ -393,16 +393,12 @@ export async function action({ request }: Route.ActionArgs) {
         }
       }
 
-      // 4. Validate session
+      // 4. Validate session — backend computes scores from answers
       const validateRes = await api(`/investor-assessments/${assessmentId}/validate-session`, {
         method: "POST",
         body: JSON.stringify({
           category: body.category,
           sessionId,
-          rawScore: body.answers.length,
-          normalizedScore: 5000,
-          scoringConfigVersion: 1,
-          label: body.category,
           expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
         }),
       });
