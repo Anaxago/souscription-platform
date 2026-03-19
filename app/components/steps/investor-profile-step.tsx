@@ -345,12 +345,12 @@ export default function InvestorProfileStep({
 
       {/* Questions */}
       {currentCat && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-lg)" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-xl)" }}>
           {currentCat.questions.map((q, qi) => (
             <div key={q.id} id={`q-${q.id}`}>
-              <label className="form-label" style={{ fontSize: 13, textTransform: "none", letterSpacing: "normal" }}>
+              <p style={{ fontSize: 16, fontWeight: 500, color: "var(--clr-obsidian)", lineHeight: 1.5, marginBottom: "var(--space-sm)" }}>
                 {questionsBeforeCurrent + qi + 1}. {q.wording}
-              </label>
+              </p>
               <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-xs)" }}>
                 {q.choices.map((choice) => {
                   const isSelected = q.type === "MULTIPLE_CHOICE"
