@@ -235,10 +235,10 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
     if (s.stepType === "USER_VERIFICATION") {
       return (s.state as { kycStatus?: string } | null)?.kycStatus === "VERIFIED";
     }
-    // INVESTOR_PROFILE with all required categories validated
+    // INVESTOR_PROFILE with any submitted categories — don't block navigation
     if (s.stepType === "INVESTOR_PROFILE") {
       const catResults = (s.state as { categoryResults?: { validated: boolean }[] } | null)?.categoryResults;
-      return catResults && catResults.length > 0 && catResults.every((c) => c.validated);
+      return catResults != null && catResults.some((c) => c.validated);
     }
     return false;
   };
