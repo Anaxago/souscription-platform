@@ -54,6 +54,40 @@
   /* Transitions */
   --transition-fast: all 0.3s ease;
   --transition-link: color 0.6s ease-out;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* ──────────────────────────────────────────────
+   Animations — Wealth Management 3.0
+   ────────────────────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes progressGrow {
+  from { width: 0; }
+}
+@keyframes checkPop {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
 /* ──────────────────────────────────────────────
@@ -802,6 +836,12 @@ html, body {
 .btn-primary:hover {
   background: var(--clr-primary-dark);
   border-color: var(--clr-primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(26, 93, 86, 0.25);
+}
+.btn-primary:active {
+  transform: translateY(0);
+  box-shadow: none;
 }
 
 .btn-primary--hero {
@@ -916,11 +956,12 @@ html, body {
   background: var(--clr-off-white);
   border: 1px dashed var(--clr-stroke-dark);
   border-radius: var(--radius-md);
-  transition: var(--transition-fast);
+  transition: all 0.25s var(--ease-out-quart);
 }
 .upload-card:hover {
   border-color: var(--clr-cashmere);
   background: var(--clr-ecru-bg);
+  box-shadow: 0 2px 8px rgba(13, 46, 43, 0.04);
 }
 .upload-card__info {
   flex: 1;
@@ -1036,7 +1077,7 @@ html, body {
   height: 100%;
   background: var(--clr-primary);
   border-radius: 2px;
-  transition: width 0.3s ease;
+  transition: width 0.6s var(--ease-out-expo);
 }
 
 /* Stepper */
@@ -1080,12 +1121,14 @@ html, body {
 .journey-stepper__dot--done {
   background: var(--clr-primary);
   border-color: var(--clr-primary);
+  animation: checkPop 0.4s var(--ease-out-expo) both;
 }
 .journey-stepper__line {
   width: 2px;
   height: 24px;
   background: var(--clr-stroke-dark);
   flex-shrink: 0;
+  transition: background 0.4s var(--ease-out-quart);
 }
 .journey-stepper__line--done {
   background: var(--clr-primary);
@@ -1145,9 +1188,11 @@ html, body {
   border: none;
   background: transparent;
   padding: 0;
+  animation: fadeInUp 0.5s var(--ease-out-expo) both;
 }
 .journey-content > .step-panel .step-panel__header {
   margin-bottom: var(--space-xl);
+  animation: fadeInUp 0.6s var(--ease-out-expo) 0.1s both;
 }
 .journey-content > .step-panel .step-panel__title {
   font-size: 28px;
@@ -1215,6 +1260,7 @@ html, body {
   align-items: center;
   gap: 14px;
   padding: 16px var(--space-md);
+  transition: all 0.25s var(--ease-out-quart);
   background: var(--clr-ecru-bg);
   border: 1px solid var(--clr-stroke-dark);
   border-radius: var(--radius-md);
@@ -1223,6 +1269,11 @@ html, body {
 }
 .choice-card:hover {
   border-color: var(--clr-cashmere);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(13, 46, 43, 0.06);
+}
+.choice-card:active {
+  transform: translateY(0);
 }
 .choice-card__radio {
   width: 18px;
@@ -1239,6 +1290,7 @@ html, body {
   height: 8px;
   border-radius: 50%;
   background: var(--clr-primary);
+  animation: checkPop 0.3s var(--ease-out-expo) both;
 }
 .choice-card__check {
   width: 18px;
@@ -1326,6 +1378,7 @@ html, body {
 .form-input:focus {
   outline: none;
   border-color: var(--clr-primary);
+  box-shadow: 0 0 0 3px rgba(26, 93, 86, 0.1);
 }
 .form-input::placeholder {
   color: var(--clr-stroke-light);
