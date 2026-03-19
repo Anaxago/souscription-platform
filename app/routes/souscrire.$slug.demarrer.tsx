@@ -80,7 +80,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     const kernel = (await kernelRes.json()) as { id: string };
 
     // 2. Create placeholder LegalEntityKernel (real SIRET collected at verification step)
-    const placeholderSiret = `${Date.now()}`.slice(0, 14);
+    const placeholderSiret = `${Date.now()}0`.padEnd(14, "0");
     const leKernelRes = await api("/legal-entity-kernels", {
       method: "POST",
       body: JSON.stringify({ name: "Entreprise", siret: placeholderSiret }),
