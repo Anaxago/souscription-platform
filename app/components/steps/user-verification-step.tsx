@@ -1,5 +1,11 @@
 import { useState, useRef } from "react";
 
+interface QuestionResult {
+  questionType: string;
+  answered: boolean;
+  answer: string | null;
+}
+
 interface Props {
   journeyId: string;
   stepId: string;
@@ -7,6 +13,8 @@ interface Props {
   personKernelId: string;
   investorType: string;
   legalEntityKernelId: string | null;
+  requiredQuestions: string[];
+  questionResults: QuestionResult[];
   actionUrl: string;
   onComplete: () => void;
 }
@@ -46,6 +54,18 @@ const LEGAL_FORMS = [
   { code: "OTHER", label: "Autre" },
 ];
 
+const VERIFICATION_QUESTION_LABELS: Record<string, string> = {
+  IS_US_PERSON: "Êtes-vous une US Person ?",
+  IS_POLITICALLY_EXPOSED: "Êtes-vous une Personne Politiquement Exposée (PPE) ?",
+  FAMILY_SITUATION: "Situation familiale",
+  PROFESSIONAL_SITUATION: "Situation professionnelle",
+};
+
+const VERIFICATION_QUESTION_PLACEHOLDERS: Record<string, string> = {
+  FAMILY_SITUATION: "Ex : Marié(e), 2 enfants",
+  PROFESSIONAL_SITUATION: "Ex : Cadre en CDI, secteur bancaire",
+};
+
 const sectionTitle = { fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 600 as const, color: "var(--clr-obsidian)", marginBottom: "var(--space-md)" };
 
 export default function UserVerificationStep({
@@ -55,6 +75,8 @@ export default function UserVerificationStep({
   personKernelId,
   investorType,
   legalEntityKernelId,
+  requiredQuestions,
+  questionResults,
   actionUrl,
   onComplete,
 }: Props) {
@@ -82,6 +104,15 @@ export default function UserVerificationStep({
   const [companyPostalCode, setCompanyPostalCode] = useState("");
   const [companyCity, setCompanyCity] = useState("");
   const [companyCountry, setCompanyCountry] = useState("FR");
+
+  // Verification questions
+  const [verificationAnswers, setVerificationAnswers] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {};
+    for (const qr of questionResults) {
+      if (qr.answered && qr.answer) init[qr.questionType] = qr.answer;
+    }
+    return init;
+  });
 
   // Documents
   const [uploading, setUploading] = useState<string | null>(null);
@@ -171,6 +202,11 @@ export default function UserVerificationStep({
       setError("Veuillez remplir tous les champs de la société.");
       return;
     }
+    const unansweredQuestions = requiredQuestions.filter((q) => !verificationAnswers[q]?.trim());
+    if (unansweredQuestions.length > 0) {
+      setError("Veuillez répondre à toutes les questions de vérification.");
+      return;
+    }
     setCompleting(true);
     setError(null);
     try {
@@ -255,6 +291,23 @@ export default function UserVerificationStep({
         }
       }
 
+      // Submit verification questions one by one
+      for (const questionType of requiredQuestions) {
+        const answer = verificationAnswers[questionType];
+        if (answer) {
+          try {
+            await callAction({
+              type: "submit-verification-question",
+              journeyId,
+              questionType,
+              answer,
+            });
+          } catch {
+            // Best-effort — continue with remaining questions
+          }
+        }
+      }
+
       // Complete verification
       await callAction({
         type: "complete-verification",
@@ -287,7 +340,8 @@ export default function UserVerificationStep({
     companyPostalCode.trim().length > 0 &&
     companyCity.trim().length > 0
   );
-  const isFormValid = isPersonValid && isCompanyValid && allRequiredUploaded;
+  const isQuestionsValid = requiredQuestions.every((q) => verificationAnswers[q]?.trim());
+  const isFormValid = isPersonValid && isCompanyValid && isQuestionsValid && allRequiredUploaded;
 
   return (
     <div className="step-panel">
@@ -473,6 +527,56 @@ export default function UserVerificationStep({
           })}
         </div>
       </div>
+
+      {/* ── Verification Questions ── */}
+      {requiredQuestions.length > 0 && (
+        <div style={{ marginBottom: "var(--space-lg)" }}>
+          <h3 style={sectionTitle}>Déclarations réglementaires</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
+            {requiredQuestions.map((qType) => {
+              const isYesNo = qType === "IS_US_PERSON" || qType === "IS_POLITICALLY_EXPOSED";
+              const label = VERIFICATION_QUESTION_LABELS[qType] ?? qType;
+              const currentAnswer = verificationAnswers[qType] ?? "";
+
+              if (isYesNo) {
+                return (
+                  <div key={qType}>
+                    <label className="form-label">{label} *</label>
+                    <div style={{ display: "flex", gap: "var(--space-sm)" }}>
+                      {[{ value: "NO", label: "Non" }, { value: "YES", label: "Oui" }].map((opt) => (
+                        <label key={opt.value} className="choice-card" style={{
+                          flex: 1, textAlign: "center",
+                          borderColor: currentAnswer === opt.value ? "var(--clr-primary)" : undefined,
+                          background: currentAnswer === opt.value ? "var(--clr-primary-light)" : undefined,
+                        }}>
+                          <input type="radio" name={`vq-${qType}`} checked={currentAnswer === opt.value} onChange={() => setVerificationAnswers((prev) => ({ ...prev, [qType]: opt.value }))} style={{ display: "none" }} />
+                          <span className="choice-card__radio">
+                            {currentAnswer === opt.value && <span className="choice-card__radio-dot" />}
+                          </span>
+                          <span className="choice-card__label">{opt.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div key={qType}>
+                  <label className="form-label" htmlFor={`vq-${qType}`}>{label} *</label>
+                  <input
+                    id={`vq-${qType}`}
+                    className="form-input"
+                    placeholder={VERIFICATION_QUESTION_PLACEHOLDERS[qType] ?? ""}
+                    value={currentAnswer}
+                    onChange={(e) => setVerificationAnswers((prev) => ({ ...prev, [qType]: e.target.value }))}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <button
         className="btn-primary"

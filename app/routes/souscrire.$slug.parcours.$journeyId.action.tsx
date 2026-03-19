@@ -30,7 +30,8 @@ type ActionPayload =
   | { type: "remove-source-of-funds"; investorId: string; origin: string }
   | { type: "activate-le-investor"; investorId: string }
   | { type: "fetch-knowledge-quiz"; financialInstrumentId: string }
-  | { type: "evaluate-knowledge-quiz"; journeyId: string; stepId: string; investorType: string; performedBy: string; answers: { questionId: string; selectedChoiceKeys: string[] }[] };
+  | { type: "evaluate-knowledge-quiz"; journeyId: string; stepId: string; investorType: string; performedBy: string; answers: { questionId: string; selectedChoiceKeys: string[] }[] }
+  | { type: "submit-verification-question"; journeyId: string; questionType: string; answer: string };
 
 function errorResponse(message: string, status: number) {
   return Response.json({ error: message }, { status });
@@ -475,6 +476,22 @@ export async function action({ request }: Route.ActionArgs) {
           return Response.json({ ok: true });
         }
         return errorResponse((err as Record<string, string>).message ?? "Erreur création compte", res.status);
+      }
+      return Response.json(await res.json());
+    }
+
+    /* ── Submit Verification Question ── */
+    case "submit-verification-question": {
+      const res = await api(`/subscription-journeys/${body.journeyId}/verification-questions`, {
+        method: "POST",
+        body: JSON.stringify({
+          questionType: body.questionType,
+          answer: body.answer,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return errorResponse((err as Record<string, string>).message ?? "Erreur soumission question", res.status);
       }
       return Response.json(await res.json());
     }
