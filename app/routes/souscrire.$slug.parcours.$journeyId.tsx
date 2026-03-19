@@ -366,7 +366,7 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
       return <DocumentUploadStep journeyId={journey.id} stepId={step.id} config={step.config as { requiredDocumentTypes: string[] | null } | null} state={step.state as { uploadedDocuments: { documentId: string; documentType: string; fileName: string; uploadedAt: string }[] } | null} actionUrl={actionUrl} onComplete={onStepComplete} />;
     }
     if (step.stepType === "PRODUCT_SUMMARY") {
-      return <ProductSummaryStep journeyId={journey.id} stepId={step.id} investorId={journey.investorId} investorType={journey.investorType} productName={marketingProduct?.name ?? null} basket={journey.basket as unknown as { lines: { lineType: string; requestedAmount: number | null }[]; envelopeTarget: { envelopeType: string; provider: string | null } | null } | null} actionUrl={actionUrl} onComplete={onStepComplete} />;
+      return <ProductSummaryStep journeyId={journey.id} stepId={step.id} investorId={journey.investorId} investorType={journey.investorType} productName={marketingProduct?.name ?? null} riskTolerance={riskTolerance} basket={journey.basket as unknown as { lines: { lineType: string; requestedAmount: number | null }[]; envelopeTarget: { envelopeType: string; provider: string | null } | null } | null} actionUrl={actionUrl} onComplete={onStepComplete} />;
     }
     // Generic fallback: simple complete button
     return (
@@ -410,24 +410,6 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
               <div className="journey-sidebar__progress-fill" style={{ width: `${progress}%` }} />
             </div>
           </div>
-
-          {riskTolerance && (
-            <div style={{
-              display: "flex", alignItems: "center", gap: "var(--space-xs)",
-              padding: "var(--space-sm) var(--space-md)",
-              background: "var(--clr-primary-light)",
-              borderRadius: "var(--radius-md)",
-              marginBottom: "var(--space-md)",
-            }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
-              </svg>
-              <span style={{ fontSize: 13, color: "var(--clr-cashmere)" }}>Profil :</span>
-              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--clr-primary)" }}>
-                {RISK_TOLERANCE_LABELS[riskTolerance] ?? riskTolerance}
-              </span>
-            </div>
-          )}
 
           <nav className="journey-stepper">
             {applicableSteps.map((step, i) => {

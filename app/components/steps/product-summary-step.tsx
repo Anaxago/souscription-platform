@@ -6,6 +6,7 @@ interface Props {
   investorId: string;
   investorType: string;
   productName: string | null;
+  riskTolerance: string | null;
   basket: {
     lines: { lineType: string; requestedAmount: number | null }[];
     envelopeTarget: { envelopeType: string; provider: string | null } | null;
@@ -41,6 +42,7 @@ export default function ProductSummaryStep({
   investorId,
   investorType,
   productName,
+  riskTolerance,
   basket,
   actionUrl,
   onComplete,
@@ -84,6 +86,7 @@ export default function ProductSummaryStep({
 
   const summaryItems = [
     { label: "Produit", value: productName ?? "—" },
+    { label: "Profil investisseur", value: riskTolerance ? (RISK_LABELS[riskTolerance] ?? riskTolerance) : "Non évalué" },
     { label: "Enveloppe", value: envelopeType ? (ENVELOPE_LABELS[envelopeType] ?? envelopeType) : "Non sélectionnée" },
     { label: "Montant engagé", value: amount ? formatEuros(amount / 100) : "Non défini" },
   ];
