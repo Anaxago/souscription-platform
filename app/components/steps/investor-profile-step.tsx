@@ -229,12 +229,8 @@ export default function InvestorProfileStep({
             }
           }
         }
-        // All categories done — try to complete the step
-        try {
-          await callAction({ type: "complete", journeyId, stepId });
-        } catch {
-          // Step may auto-complete from backend
-        }
+        // All categories done — complete the step
+        await callAction({ type: "complete", journeyId, stepId });
         setProfileDone(true);
         window.scrollTo({ top: 0, behavior: "smooth" });
       } else {
@@ -318,7 +314,10 @@ export default function InvestorProfileStep({
         <div>
           <h2 className="step-panel__title">{currentCat?.label}</h2>
           <p className="step-panel__desc">
-            Catégorie {currentCatIndex + 1} sur {categories.length} — {answeredCount}/{totalQuestions} questions répondues
+            Catégorie {currentCatIndex + 1} sur {categories.length} — {currentCat ? currentCat.questions.filter((q) => {
+              const a = answers[q.id];
+              return q.type === "MULTIPLE_CHOICE" ? Array.isArray(a) && a.length > 0 : typeof a === "string" && a.length > 0;
+            }).length : 0}/{currentCat?.questions.length ?? 0} questions répondues
           </p>
         </div>
       </div>

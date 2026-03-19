@@ -63,17 +63,16 @@ export default function ProductSummaryStep({
   }
 
   async function handleConfirm() {
+    console.log("[ProductSummary] handleConfirm called", { journeyId, stepId });
     setSubmitting(true);
     setError(null);
     try {
-      try {
-        await callAction({ type: "complete", journeyId, stepId });
-      } catch {
-        // 409 handled server-side
-      }
+      const result = await callAction({ type: "complete", journeyId, stepId });
+      console.log("[ProductSummary] complete succeeded", result);
       setConfirmed(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) {
+      console.error("[ProductSummary] complete FAILED", e);
       setError(e instanceof Error ? e.message : "Erreur");
     } finally {
       setSubmitting(false);

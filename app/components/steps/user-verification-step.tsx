@@ -333,23 +333,14 @@ export default function UserVerificationStep({
       }
 
       // Set user-verification status
-      try {
-        await callAction({ type: "user-verification", journeyId });
-      } catch {
-        // Best-effort
-      }
+      await callAction({ type: "user-verification", journeyId });
 
-      // Try to complete the step explicitly
-      try {
-        const completeResult = await callAction({
-          type: "complete-verification",
-          journeyId,
-          stepId,
-        });
-        console.log("complete-verification result:", JSON.stringify(completeResult));
-      } catch (e) {
-        console.error("complete-verification failed:", e);
-      }
+      // Complete the step explicitly
+      await callAction({
+        type: "complete-verification",
+        journeyId,
+        stepId,
+      });
 
       // Show warnings if questions failed
       if (questionErrors.length > 0) {

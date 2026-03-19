@@ -181,8 +181,12 @@ export default function KnowledgeQuizStep({
           </div>
         </div>
         <button className="btn-primary" style={{ width: "100%", justifyContent: "center", marginTop: "var(--space-lg)" }} onClick={async () => {
-          try { await callAction({ type: "complete", journeyId, stepId }); } catch { /* */ }
-          onComplete();
+          try {
+            await callAction({ type: "complete", journeyId, stepId });
+            onComplete();
+          } catch (e) {
+            setError(e instanceof Error ? e.message : "Erreur");
+          }
         }}>
           Passer cette étape
         </button>

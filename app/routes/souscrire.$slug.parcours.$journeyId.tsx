@@ -248,6 +248,9 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
     applicableSteps.find((s) => s.stepStatus !== "COMPLETED" && s.stepStatus !== "SKIPPED" && !isStepPendingApproval(s)) ??
     applicableSteps.find((s) => s.stepStatus === "IN_PROGRESS");
 
+  console.log("[Parcours] steps", applicableSteps.map((s) => `${s.stepType}:${s.stepStatus}`));
+  console.log("[Parcours] currentStep", currentStep?.stepType, currentStep?.stepStatus);
+
   const completedCount = applicableSteps.filter((s) => s.stepStatus === "COMPLETED" || isStepPendingApproval(s)).length;
   const progress =
     applicableSteps.length > 0
@@ -308,6 +311,7 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
   }
 
   const onStepComplete = () => {
+    console.log("[Parcours] onStepComplete — clearing override, revalidating");
     setOverrideStepId(null);
     revalidator.revalidate();
     window.scrollTo({ top: 0, behavior: "smooth" });
