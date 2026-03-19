@@ -127,9 +127,13 @@ export default function KnowledgeQuizStep({
           selectedChoiceKeys: answers[q.id] ?? [],
         })),
       });
-      const res = evalResult as EvaluateResult;
+      console.log("Evaluate result:", JSON.stringify(evalResult));
+      const raw = evalResult as Record<string, unknown>;
+      const outcome = (raw.outcome ?? raw.result ?? "") as string;
+      const score = (raw.score ?? 0) as number;
+      const res: EvaluateResult = { score, outcome: outcome as EvaluateResult["outcome"] };
       setResult(res);
-      if (res.outcome === "APPROVED" || res.outcome === "WARNING") {
+      if (outcome === "APPROVED" || outcome === "WARNING") {
         onComplete();
       }
     } catch (e) {
