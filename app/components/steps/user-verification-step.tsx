@@ -315,20 +315,15 @@ export default function UserVerificationStep({
       }
 
       // Submit verification questions one by one
-      const questionErrors: string[] = [];
       for (const questionType of requiredQuestions) {
         const answer = verificationAnswers[questionType];
         if (answer) {
-          try {
-            await callAction({
-              type: "submit-verification-question",
-              journeyId,
-              questionType,
-              answer,
-            });
-          } catch (e) {
-            questionErrors.push(`${questionType}: ${e instanceof Error ? e.message : "erreur"}`);
-          }
+          await callAction({
+            type: "submit-verification-question",
+            journeyId,
+            questionType,
+            answer,
+          });
         }
       }
 
@@ -341,11 +336,6 @@ export default function UserVerificationStep({
         journeyId,
         stepId,
       });
-
-      // Show warnings if questions failed
-      if (questionErrors.length > 0) {
-        console.warn("Question errors:", questionErrors);
-      }
 
       setSubmitted(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
