@@ -55,7 +55,7 @@ const STEP_TYPE_LABELS: Record<string, string> = {
   USER_VERIFICATION: "Vérification d'identité",
   INVESTOR_PROFILE: "Profil investisseur",
   PRODUCT_QUESTIONS: "Questions produit",
-  PRODUCT_SELECTION: "Sélection du produit",
+  PRODUCT_SELECTION: "Montant à investir",
   ENVELOPE_SELECTION: "Sélection de l'enveloppe",
   DISMEMBERMENT_SELECTION: "Choix du démembrement",
   SHARE_SELECTION: "Sélection des parts",
