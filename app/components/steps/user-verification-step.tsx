@@ -347,7 +347,7 @@ export default function UserVerificationStep({
     companyCity.trim().length > 0
   );
   const isQuestionsValid = requiredQuestions.every((q) => verificationAnswers[q]?.trim());
-  const isFormValid = isPersonValid && isCompanyValid && isQuestionsValid && allRequiredUploaded;
+  const isFormValid = isPersonValid && isCompanyValid && isQuestionsValid;
 
   return (
     <div className="step-panel">
