@@ -228,11 +228,20 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
     .filter((s) => s.isApplicable)
     .sort((a, b) => a.position - b.position);
 
-  // USER_VERIFICATION with kycStatus VERIFIED is "pending external approval" — treat as done for navigation
-  const isStepPendingApproval = (s: JourneyStep) =>
-    s.stepType === "USER_VERIFICATION" &&
-    s.stepStatus === "IN_PROGRESS" &&
-    (s.state as { kycStatus?: string } | null)?.kycStatus === "VERIFIED";
+  // Steps that are IN_PROGRESS but effectively done — skip past them
+  const isStepPendingApproval = (s: JourneyStep) => {
+    if (s.stepStatus !== "IN_PROGRESS") return false;
+    // USER_VERIFICATION with kycStatus VERIFIED
+    if (s.stepType === "USER_VERIFICATION") {
+      return (s.state as { kycStatus?: string } | null)?.kycStatus === "VERIFIED";
+    }
+    // INVESTOR_PROFILE with all required categories validated
+    if (s.stepType === "INVESTOR_PROFILE") {
+      const catResults = (s.state as { categoryResults?: { validated: boolean }[] } | null)?.categoryResults;
+      return catResults && catResults.length > 0 && catResults.every((c) => c.validated);
+    }
+    return false;
+  };
 
   const currentStep =
     applicableSteps.find((s) => s.stepStatus === "IN_PROGRESS" && !isStepPendingApproval(s)) ??
