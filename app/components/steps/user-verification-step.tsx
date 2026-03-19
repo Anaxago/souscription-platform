@@ -54,6 +54,27 @@ const LEGAL_FORMS = [
   { code: "OTHER", label: "Autre" },
 ];
 
+const FAMILY_SITUATIONS = [
+  { value: "SINGLE", label: "Célibataire" },
+  { value: "MARRIED", label: "Marié(e)" },
+  { value: "CIVIL_PARTNERSHIP", label: "Pacsé(e)" },
+  { value: "DIVORCED", label: "Divorcé(e)" },
+  { value: "SEPARATED", label: "Séparé(e)" },
+  { value: "WIDOWED", label: "Veuf/Veuve" },
+  { value: "OTHER_UNION", label: "Autre union" },
+];
+
+const PROFESSIONAL_SITUATIONS = [
+  { value: "EMPLOYEE", label: "Salarié(e)" },
+  { value: "EXECUTIVE", label: "Cadre" },
+  { value: "SELF_EMPLOYED", label: "Indépendant(e)" },
+  { value: "CIVIL_SERVANT", label: "Fonctionnaire" },
+  { value: "RETIRED", label: "Retraité(e)" },
+  { value: "STUDENT", label: "Étudiant(e)" },
+  { value: "UNEMPLOYED", label: "Sans emploi" },
+  { value: "OTHER", label: "Autre" },
+];
+
 const VERIFICATION_QUESTION_LABELS: Record<string, string> = {
   IS_US_PERSON: "Êtes-vous une US Person ?",
   IS_POLITICALLY_EXPOSED: "Êtes-vous une Personne Politiquement Exposée (PPE) ?",
@@ -615,13 +636,36 @@ export default function UserVerificationStep({
                 );
               }
 
+              // Enum select for FAMILY_SITUATION and PROFESSIONAL_SITUATION
+              const options = qType === "FAMILY_SITUATION" ? FAMILY_SITUATIONS
+                : qType === "PROFESSIONAL_SITUATION" ? PROFESSIONAL_SITUATIONS
+                : null;
+
+              if (options) {
+                return (
+                  <div key={qType}>
+                    <label className="form-label" htmlFor={`vq-${qType}`}>{label} *</label>
+                    <select
+                      id={`vq-${qType}`}
+                      className="form-input"
+                      value={currentAnswer}
+                      onChange={(e) => setVerificationAnswers((prev) => ({ ...prev, [qType]: e.target.value }))}
+                    >
+                      <option value="">Sélectionner...</option>
+                      {options.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              }
+
               return (
                 <div key={qType}>
                   <label className="form-label" htmlFor={`vq-${qType}`}>{label} *</label>
                   <input
                     id={`vq-${qType}`}
                     className="form-input"
-                    placeholder={VERIFICATION_QUESTION_PLACEHOLDERS[qType] ?? ""}
                     value={currentAnswer}
                     onChange={(e) => setVerificationAnswers((prev) => ({ ...prev, [qType]: e.target.value }))}
                   />
