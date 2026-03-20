@@ -173,16 +173,13 @@ export async function loader({ params }: Route.LoaderArgs) {
       riskTolerance = (investor.riskTolerance as string) ?? (investor.riskProfile as string) ?? null;
     }
 
-    // If risk profile not yet calculated, trigger recalculation
+    // If risk profile not yet calculated, trigger recalculation and read from response
     if (!riskTolerance) {
       try {
-        await api(`/individual-investors/${journey.investorId}/recalculate-risk-profile`, { method: "POST" });
-        const refreshRes = await api(journey.investorType === "LEGAL"
-          ? `/legal-entity-investors/${journey.investorId}`
-          : `/individual-investors/${journey.investorId}`);
-        if (refreshRes.ok) {
-          const refreshed = (await refreshRes.json()) as Record<string, unknown>;
-          riskTolerance = (refreshed.riskTolerance as string) ?? (refreshed.riskProfile as string) ?? null;
+        const recalcRes = await api(`/individual-investors/${journey.investorId}/recalculate-risk-profile`, { method: "POST" });
+        if (recalcRes.ok) {
+          const recalc = (await recalcRes.json()) as Record<string, unknown>;
+          riskTolerance = (recalc.riskTolerance as string) ?? (recalc.riskProfile as string) ?? null;
         }
       } catch {
         // Non-blocking
