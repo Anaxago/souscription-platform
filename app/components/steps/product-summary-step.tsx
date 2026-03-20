@@ -107,8 +107,8 @@ export default function ProductSummaryStep({
   const envelopeType = basket?.envelopeTarget?.envelopeType ?? null;
 
   const summaryItems: { label: string; value: string; custom?: React.ReactNode }[] = [
-    { label: "Produit", value: productName ?? "—" },
-    ...(riskTolerance ? [{ label: "Profil de risque", value: "", custom: <RiskGauge level={riskTolerance} /> }] : []),
+    ...(riskTolerance ? [{ label: "Votre profil de risque", value: "", custom: <RiskGauge level={riskTolerance} /> }] : []),
+    { label: "Produit souscrit", value: productName ?? "—" },
     { label: "Enveloppe", value: envelopeType ? (ENVELOPE_LABELS[envelopeType] ?? envelopeType) : "Non sélectionnée" },
     { label: "Montant engagé", value: amount ? formatEuros(amount / 100) : "Non défini" },
   ];
