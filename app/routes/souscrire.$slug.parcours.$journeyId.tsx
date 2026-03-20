@@ -171,8 +171,22 @@ export async function loader({ params }: Route.LoaderArgs) {
       const investor = (await investorRes.json()) as Record<string, unknown>;
       personKernelId = (investor.personKernelId as string) ?? null;
       riskTolerance = (investor.riskTolerance as string) ?? null;
-      console.log("[Loader] investor fields:", Object.keys(investor).join(", "));
-      console.log("[Loader] riskTolerance:", investor.riskTolerance, "| riskProfile:", investor.riskProfile);
+    }
+
+    // If risk profile not yet calculated, trigger recalculation
+    if (!riskTolerance) {
+      try {
+        await api(`/individual-investors/${journey.investorId}/recalculate-risk-profile`, { method: "POST" });
+        const refreshRes = await api(journey.investorType === "LEGAL"
+          ? `/legal-entity-investors/${journey.investorId}`
+          : `/individual-investors/${journey.investorId}`);
+        if (refreshRes.ok) {
+          const refreshed = (await refreshRes.json()) as Record<string, unknown>;
+          riskTolerance = (refreshed.riskTolerance as string) ?? null;
+        }
+      } catch {
+        // Non-blocking
+      }
     }
   }
 
