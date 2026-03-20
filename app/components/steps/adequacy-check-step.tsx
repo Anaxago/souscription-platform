@@ -26,25 +26,60 @@ interface CriterionResult {
   adequacy: "POSITIVE" | "NEUTRAL" | "NEGATIVE" | "MISSING";
 }
 
+const CRITERION_LABELS: Record<string, string> = {
+  MIFID_CLASSIFICATION: "Classification MiFID",
+  FINANCIAL_KNOWLEDGE: "Connaissances financières",
+  FINANCIAL_EXPERIENCE: "Expérience financière",
+  RISK_PROFILE: "Profil de risque",
+  RISK_TOLERANCE: "Tolérance au risque",
+  LOSS_CAPACITY: "Capacité de perte",
+  INVESTMENT_HORIZON: "Horizon d'investissement",
+  INVESTMENT_OBJECTIVE: "Objectif d'investissement",
+  ESG_PREFERENCE: "Préférence ESG",
+  TAXONOMY_PREFERENCE: "Préférence Taxonomie",
+  PAI_CONSIDERATION: "Prise en compte des PAI",
+  US_PERSON: "US Person",
+  AGE_OVER_65: "Plus de 65 ans",
+  KNOWLEDGE_LEVEL: "Niveau de connaissance",
+  EXPERIENCE: "Expérience",
+  FINANCIAL_SITUATION: "Situation financière",
+};
+
 const INVESTOR_VALUE_LABELS: Record<string, string> = {
+  // Knowledge & experience
   EXPERIENCED: "Expérimenté",
   INTERMEDIATE: "Intermédiaire",
   NOVICE: "Débutant",
-  CONSERVATIVE: "Conservateur",
+  PROFESSIONAL: "Professionnel",
+  RETAIL: "Non professionnel",
+  // Risk profile
+  CONSERVATIVE: "Prudent",
   MODERATE: "Modéré",
   BALANCED: "Équilibré",
   DYNAMIC: "Dynamique",
   AGGRESSIVE: "Offensif",
+  // Horizon
   SHORT: "Court terme",
   MEDIUM: "Moyen terme",
   LONG: "Long terme",
-  LIMITED_LOSS: "Perte limitée",
-  TOTAL_LOSS: "Perte totale possible",
+  // Loss capacity
   NO_LOSS: "Aucune perte",
+  LIMITED_LOSS: "Perte limitée",
+  PARTIAL_LOSS: "Perte partielle",
+  TOTAL_LOSS: "Perte totale possible",
+  NO_GUARANTEE: "Sans garantie de capital",
+  // Objectives
+  CAPITAL_PRESERVATION: "Préservation du capital",
+  INCOME_GENERATION: "Génération de revenus",
+  MODERATE_GROWTH: "Croissance modérée",
+  HIGH_GROWTH: "Forte croissance",
+  MAXIMUM_RETURNS: "Rendement maximum",
+  // ESG / Taxonomy / PAI
   INTERESTED: "Intéressé",
   NOT_INTERESTED: "Non intéressé",
   CONSIDERS: "Pris en compte",
   DOES_NOT_CONSIDER: "Non pris en compte",
+  // Boolean
   TRUE: "Oui",
   FALSE: "Non",
 };
@@ -168,7 +203,7 @@ function generatePdfReport(data: {
             const badgeClass = c.adequacy === "POSITIVE" ? "badge-positive" : c.adequacy === "NEGATIVE" ? "badge-negative" : c.adequacy === "NEUTRAL" ? "badge-neutral" : "badge-missing";
             const badgeLabel = c.adequacy === "POSITIVE" ? "Positif" : c.adequacy === "NEGATIVE" ? "Négatif" : c.adequacy === "NEUTRAL" ? "Neutre" : "Manquant";
             const val = c.investorValue ? (INVESTOR_VALUE_LABELS[c.investorValue] ?? c.investorValue) : "—";
-            return `<tr><td>${c.criterionType}</td><td style="font-weight:600">${val}</td><td style="text-align:right"><span class="badge ${badgeClass}">${badgeLabel}</span></td></tr>`;
+            return `<tr><td>${CRITERION_LABELS[c.criterionType] ?? c.criterionType}</td><td style="font-weight:600">${val}</td><td style="text-align:right"><span class="badge ${badgeClass}">${badgeLabel}</span></td></tr>`;
           }).join("")}
         </tbody>
       </table>
@@ -424,14 +459,14 @@ export default function AdequacyCheckStep({
                 const badge = ADEQUACY_BADGE[c.adequacy] ?? ADEQUACY_BADGE.MISSING;
                 const valueLabel = c.investorValue ? (INVESTOR_VALUE_LABELS[c.investorValue] ?? c.investorValue) : "—";
                 return (
-                  <div key={c.criterionType} style={{
+                  <div key={CRITERION_LABELS[c.criterionType] ?? c.criterionType} style={{
                     display: "grid", gridTemplateColumns: "1fr auto auto", gap: "var(--space-sm)", alignItems: "center",
                     padding: "var(--space-sm) var(--space-md)",
                     borderBottom: i < criteria.length - 1 ? "1px solid var(--clr-stroke-dark)" : undefined,
                     background: i % 2 === 0 ? "white" : "var(--clr-off-white)",
                   }}>
                     <span style={{ fontSize: 14, color: "var(--clr-obsidian)" }}>
-                      {c.criterionType}
+                      {CRITERION_LABELS[c.criterionType] ?? c.criterionType}
                     </span>
                     <span style={{ fontSize: 13, fontWeight: 600, color: "var(--clr-obsidian)", minWidth: 120 }}>
                       {valueLabel}
