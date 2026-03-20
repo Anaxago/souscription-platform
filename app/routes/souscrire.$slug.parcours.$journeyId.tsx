@@ -459,7 +459,12 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
           )}
 
           {/* Active step panel */}
-          {activeStep && activeStep.stepStatus !== "COMPLETED" && (
+          {revalidator.state === "loading" && (
+            <div style={{ padding: "var(--space-2xl)", textAlign: "center" }}>
+              <p style={{ color: "var(--clr-cashmere)", fontSize: 15 }}>Chargement...</p>
+            </div>
+          )}
+          {revalidator.state !== "loading" && activeStep && activeStep.stepStatus !== "COMPLETED" && (
             <div key={`${activeStep.id}-${stepKey}`}>
               {renderStepPanel(activeStep)}
             </div>
