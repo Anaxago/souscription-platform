@@ -163,14 +163,14 @@ export async function loader({ params }: Route.LoaderArgs) {
   let riskTolerance: string | null = null;
   if (investorRes.ok) {
     if (journey.investorType === "LEGAL") {
-      const investor = (await investorRes.json()) as { legalEntityKernelId: string; operatedBy: string; riskTolerance?: string | null };
-      legalEntityKernelId = investor.legalEntityKernelId;
-      personKernelId = investor.operatedBy;
-      riskTolerance = investor.riskTolerance ?? null;
+      const investor = (await investorRes.json()) as Record<string, unknown>;
+      legalEntityKernelId = (investor.legalEntityKernelId as string) ?? null;
+      personKernelId = (investor.operatedBy as string) ?? null;
+      riskTolerance = (investor.riskTolerance as string) ?? (investor.riskProfile as string) ?? null;
     } else {
       const investor = (await investorRes.json()) as Record<string, unknown>;
       personKernelId = (investor.personKernelId as string) ?? null;
-      riskTolerance = (investor.riskTolerance as string) ?? null;
+      riskTolerance = (investor.riskTolerance as string) ?? (investor.riskProfile as string) ?? null;
     }
 
     // If risk profile not yet calculated, trigger recalculation
@@ -182,7 +182,7 @@ export async function loader({ params }: Route.LoaderArgs) {
           : `/individual-investors/${journey.investorId}`);
         if (refreshRes.ok) {
           const refreshed = (await refreshRes.json()) as Record<string, unknown>;
-          riskTolerance = (refreshed.riskTolerance as string) ?? null;
+          riskTolerance = (refreshed.riskTolerance as string) ?? (refreshed.riskProfile as string) ?? null;
         }
       } catch {
         // Non-blocking
