@@ -460,8 +460,22 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
 
           {/* Active step panel */}
           {revalidator.state === "loading" && (
-            <div style={{ padding: "var(--space-2xl)", textAlign: "center" }}>
-              <p style={{ color: "var(--clr-cashmere)", fontSize: 15 }}>Chargement...</p>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "var(--space-2xl) 0", gap: "var(--space-md)" }}>
+              <div style={{ position: "relative", width: 48, height: 48 }}>
+                <div style={{
+                  width: 48, height: 48, borderRadius: "50%",
+                  border: "3px solid var(--clr-mauve)",
+                  borderTopColor: "var(--clr-primary)",
+                  animation: "stanzia-spin 0.8s linear infinite",
+                }} />
+              </div>
+              <span style={{
+                fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600,
+                color: "var(--clr-primary)", letterSpacing: "0.02em",
+              }}>
+                Stanz&apos;IA
+              </span>
+              <style>{`@keyframes stanzia-spin { to { transform: rotate(360deg); } }`}</style>
             </div>
           )}
           {revalidator.state !== "loading" && activeStep && activeStep.stepStatus !== "COMPLETED" && (
