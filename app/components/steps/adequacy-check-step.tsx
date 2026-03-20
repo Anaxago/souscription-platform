@@ -452,17 +452,17 @@ export default function AdequacyCheckStep({
                 </span>
               </div>
               {/* Header */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: "var(--space-sm)", padding: "var(--space-xs) var(--space-md)", borderBottom: "1px solid var(--clr-stroke-dark)", background: "var(--clr-off-white)" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 180px 80px", padding: "var(--space-xs) var(--space-md)", borderBottom: "1px solid var(--clr-stroke-dark)", background: "var(--clr-off-white)" }}>
                 <span style={{ fontSize: 11, fontWeight: 600, color: "var(--clr-cashmere)", textTransform: "uppercase", letterSpacing: "0.03em" }}>Critère</span>
-                <span style={{ fontSize: 11, fontWeight: 600, color: "var(--clr-cashmere)", textTransform: "uppercase", letterSpacing: "0.03em", minWidth: 120 }}>Valeur</span>
-                <span style={{ fontSize: 11, fontWeight: 600, color: "var(--clr-cashmere)", textTransform: "uppercase", letterSpacing: "0.03em", minWidth: 80, textAlign: "right" }}>Résultat</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: "var(--clr-cashmere)", textTransform: "uppercase", letterSpacing: "0.03em" }}>Valeur</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: "var(--clr-cashmere)", textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "right" }}>Résultat</span>
               </div>
               {criteria.map((c, i) => {
                 const badge = ADEQUACY_BADGE[c.adequacy] ?? ADEQUACY_BADGE.MISSING;
                 const valueLabel = c.investorValue ? (INVESTOR_VALUE_LABELS[c.investorValue] ?? c.investorValue) : "—";
                 return (
                   <div key={CRITERION_LABELS[c.criterionType] ?? c.criterionType} style={{
-                    display: "grid", gridTemplateColumns: "1fr auto auto", gap: "var(--space-sm)", alignItems: "center",
+                    display: "grid", gridTemplateColumns: "1fr 180px 80px", alignItems: "center",
                     padding: "var(--space-sm) var(--space-md)",
                     borderBottom: i < criteria.length - 1 ? "1px solid var(--clr-stroke-dark)" : undefined,
                     background: i % 2 === 0 ? "white" : "var(--clr-off-white)",
@@ -470,13 +470,13 @@ export default function AdequacyCheckStep({
                     <span style={{ fontSize: 14, color: "var(--clr-obsidian)" }}>
                       {CRITERION_LABELS[c.criterionType] ?? c.criterionType}
                     </span>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--clr-obsidian)", minWidth: 120 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--clr-obsidian)" }}>
                       {valueLabel}
                     </span>
                     <span style={{
                       fontSize: 12, fontWeight: 600, padding: "2px 10px", borderRadius: 12,
                       background: badge.bg, color: badge.color, border: `1px solid ${badge.border}`,
-                      minWidth: 80, textAlign: "center", whiteSpace: "nowrap",
+                      textAlign: "center", whiteSpace: "nowrap",
                     }}>
                       {badge.label}
                     </span>
