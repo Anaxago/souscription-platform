@@ -166,9 +166,9 @@ export default function InvestorProfileStep({
 
   const [autoAdvance, setAutoAdvance] = useState(false);
 
-  // Auto-advance single-question categories after 500ms
+  // Auto-advance when all questions in category are answered
   useEffect(() => {
-    if (autoAdvance && currentCat && currentCat.questions.length === 1 && allQuestionsAnsweredInCategory(currentCat)) {
+    if (autoAdvance && currentCat && allQuestionsAnsweredInCategory(currentCat)) {
       const timer = setTimeout(() => {
         setAutoAdvance(false);
         handleNextCategory();
@@ -180,14 +180,10 @@ export default function InvestorProfileStep({
 
   function handleSingleAnswer(questionId: string, choiceKey: string) {
     setAnswers((prev) => ({ ...prev, [questionId]: choiceKey }));
+    setAutoAdvance(true);
 
     if (currentCat) {
-      // If single question in category → flag for auto-advance
-      if (currentCat.questions.length === 1) {
-        setAutoAdvance(true);
-        return;
-      }
-      // Auto-scroll to next question
+      // Auto-scroll to next unanswered question
       const qIndex = currentCat.questions.findIndex((q) => q.id === questionId);
       const nextQ = currentCat.questions[qIndex + 1];
       if (nextQ) {
