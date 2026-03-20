@@ -161,17 +161,35 @@ export async function loader({ params }: Route.LoaderArgs) {
   let personKernelId: string | null = null;
   let legalEntityKernelId: string | null = null;
   let riskTolerance: string | null = null;
+  let investorDisplayName: string | null = null;
+  let investorEmail: string | null = null;
+  let investorPhone: string | null = null;
   if (investorRes.ok) {
     if (journey.investorType === "LEGAL") {
       const investor = (await investorRes.json()) as Record<string, unknown>;
       legalEntityKernelId = (investor.legalEntityKernelId as string) ?? null;
       personKernelId = (investor.operatedBy as string) ?? null;
       riskTolerance = (investor.riskTolerance as string) ?? (investor.riskProfile as string) ?? null;
+      investorDisplayName = (investor.displayName as string) ?? null;
     } else {
       const investor = (await investorRes.json()) as Record<string, unknown>;
       personKernelId = (investor.personKernelId as string) ?? null;
       riskTolerance = (investor.riskTolerance as string) ?? (investor.riskProfile as string) ?? null;
+      investorDisplayName = (investor.displayName as string) ?? null;
     }
+
+    // Fetch account for email/phone (best-effort)
+    try {
+      const accountsRes = await api("/accounts?pageSize=50");
+      if (accountsRes.ok) {
+        const accountsBody = (await accountsRes.json()) as { data: { email: string; phone: string | null; personId: string }[] };
+        const account = accountsBody.data?.find((a) => a.personId === personKernelId);
+        if (account) {
+          investorEmail = account.email;
+          investorPhone = account.phone ?? null;
+        }
+      }
+    } catch { /* non-blocking */ }
 
     // If risk profile not yet calculated, trigger recalculation and read from response
     if (!riskTolerance) {
@@ -222,7 +240,7 @@ export async function loader({ params }: Route.LoaderArgs) {
     marketingProduct = { ...p, shares };
   }
 
-  return { journey, slug, personKernelId, legalEntityKernelId, marketingProduct, eligibleEnvelopes, riskTolerance };
+  return { journey, slug, personKernelId, legalEntityKernelId, marketingProduct, eligibleEnvelopes, riskTolerance, investorDisplayName, investorEmail, investorPhone };
 }
 
 export function headers() {
@@ -256,14 +274,15 @@ function formatEuros(cents: number): string {
 function generateOrderRecap(data: {
   orderId: string;
   productName: string;
+  investorName: string | null;
+  investorEmail: string | null;
+  investorPhone: string | null;
   investorType: string;
   riskTolerance: string | null;
   envelopeType: string | null;
   amount: number | null;
   steps: { name: string; status: string }[];
   date: string;
-  journeyId: string;
-  investorId: string;
 }) {
   const html = `<!DOCTYPE html>
 <html lang="fr">
@@ -324,11 +343,12 @@ function generateOrderRecap(data: {
   </div>
 
   <div class="section">
-    <div class="section-title">Identifiants</div>
+    <div class="section-title">Investisseur</div>
     <table class="table">
+      <tr><td>Nom</td><td>${data.investorName ?? "—"}</td></tr>
+      <tr><td>Email</td><td>${data.investorEmail ?? "—"}</td></tr>
+      <tr><td>Téléphone</td><td>${data.investorPhone ?? "—"}</td></tr>
       <tr><td>Référence ordre</td><td style="font-family:monospace">${data.orderId}</td></tr>
-      <tr><td>Parcours</td><td style="font-family:monospace">${data.journeyId}</td></tr>
-      <tr><td>Investisseur</td><td style="font-family:monospace">${data.investorId}</td></tr>
     </table>
   </div>
 
@@ -357,7 +377,7 @@ function generateOrderRecap(data: {
   }
 }
 
-function JourneyCompleted({ journey, marketingProductName, riskTolerance, actionUrl }: { journey: SubscriptionJourney; marketingProductName: string | null; riskTolerance: string | null; actionUrl: string }) {
+function JourneyCompleted({ journey, marketingProductName, riskTolerance, investorDisplayName, investorEmail, investorPhone, actionUrl }: { journey: SubscriptionJourney; marketingProductName: string | null; riskTolerance: string | null; investorDisplayName: string | null; investorEmail: string | null; investorPhone: string | null; actionUrl: string }) {
   const [ordering, setOrdering] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -424,9 +444,10 @@ function JourneyCompleted({ journey, marketingProductName, riskTolerance, action
         name: STEP_TYPE_LABELS[s.stepType] ?? s.stepType,
         status: s.stepStatus,
       })),
+      investorName: investorDisplayName,
+      investorEmail,
+      investorPhone,
       date: new Date().toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }),
-      journeyId: journey.id,
-      investorId: journey.investorId,
     });
   }
 
@@ -447,12 +468,14 @@ function JourneyCompleted({ journey, marketingProductName, riskTolerance, action
         {/* Summary table */}
         <div style={{ textAlign: "left", border: "1px solid var(--clr-stroke-dark)", borderRadius: "var(--radius-md)", overflow: "hidden", marginBottom: "var(--space-md)" }}>
           {[
-            { label: "Produit", value: marketingProductName ?? "—" },
+            { label: "Investisseur", value: investorDisplayName ?? "—" },
+            ...(investorEmail ? [{ label: "Email", value: investorEmail }] : []),
+            ...(investorPhone ? [{ label: "Téléphone", value: investorPhone }] : []),
+            { label: "Produit souscrit", value: marketingProductName ?? "—" },
             { label: "Profil de risque", value: riskTolerance ? (RISK_TOLERANCE_LABELS[riskTolerance] ?? riskTolerance) : "Non évalué" },
             { label: "Enveloppe", value: envelopeType ? (ENVELOPE_LABELS[envelopeType] ?? envelopeType) : "—" },
             { label: "Montant engagé", value: amount ? formatEuros(amount) : "—" },
-            { label: "Type d'investisseur", value: journey.investorType === "LEGAL" ? "Personne morale" : "Personne physique" },
-            { label: "Référence", value: orderId.slice(0, 8) },
+            { label: "Réf. ordre", value: orderId.slice(0, 8) },
           ].map((row, i) => (
             <div key={row.label} style={{
               display: "flex", justifyContent: "space-between", alignItems: "center",
@@ -501,7 +524,7 @@ function JourneyCompleted({ journey, marketingProductName, riskTolerance, action
 }
 
 export default function ParcoursSouscription({ loaderData }: Route.ComponentProps) {
-  const { journey, slug, personKernelId, legalEntityKernelId, marketingProduct, eligibleEnvelopes, riskTolerance } = loaderData;
+  const { journey, slug, personKernelId, legalEntityKernelId, marketingProduct, eligibleEnvelopes, riskTolerance, investorDisplayName, investorEmail, investorPhone } = loaderData;
   const revalidator = useRevalidator();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -764,7 +787,7 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
 
           {/* Journey completed — create order (also when all steps are effectively done) */}
           {(journey.status === "COMPLETED" || (!currentStep && completedCount === applicableSteps.length)) && (
-            <JourneyCompleted journey={journey} marketingProductName={marketingProduct?.name ?? null} riskTolerance={riskTolerance} actionUrl={actionUrl} />
+            <JourneyCompleted journey={journey} marketingProductName={marketingProduct?.name ?? null} riskTolerance={riskTolerance} investorDisplayName={investorDisplayName} investorEmail={investorEmail} investorPhone={investorPhone} actionUrl={actionUrl} />
           )}
         </section>
       </main>
