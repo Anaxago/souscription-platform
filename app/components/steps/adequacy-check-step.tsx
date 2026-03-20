@@ -24,22 +24,34 @@ interface CriterionResult {
   adequacy: "POSITIVE" | "NEUTRAL" | "NEGATIVE" | "MISSING";
 }
 
-const CRITERION_LABELS: Record<string, string> = {
-  RISK_TOLERANCE: "Tolérance au risque",
-  INVESTMENT_HORIZON: "Horizon d'investissement",
-  KNOWLEDGE_LEVEL: "Niveau de connaissance",
-  LOSS_CAPACITY: "Capacité de perte",
-  FINANCIAL_SITUATION: "Situation financière",
-  INVESTMENT_OBJECTIVE: "Objectif d'investissement",
-  EXPERIENCE: "Expérience",
-  ESG_PREFERENCE: "Préférence ESG",
+const INVESTOR_VALUE_LABELS: Record<string, string> = {
+  EXPERIENCED: "Expérimenté",
+  INTERMEDIATE: "Intermédiaire",
+  NOVICE: "Débutant",
+  CONSERVATIVE: "Conservateur",
+  MODERATE: "Modéré",
+  BALANCED: "Équilibré",
+  DYNAMIC: "Dynamique",
+  AGGRESSIVE: "Offensif",
+  SHORT: "Court terme",
+  MEDIUM: "Moyen terme",
+  LONG: "Long terme",
+  LIMITED_LOSS: "Perte limitée",
+  TOTAL_LOSS: "Perte totale possible",
+  NO_LOSS: "Aucune perte",
+  INTERESTED: "Intéressé",
+  NOT_INTERESTED: "Non intéressé",
+  CONSIDERS: "Pris en compte",
+  DOES_NOT_CONSIDER: "Non pris en compte",
+  TRUE: "Oui",
+  FALSE: "Non",
 };
 
-const ADEQUACY_ICONS: Record<string, { icon: string; color: string }> = {
-  POSITIVE: { icon: "✓", color: "var(--clr-primary)" },
-  NEUTRAL: { icon: "—", color: "var(--clr-warning)" },
-  NEGATIVE: { icon: "✗", color: "var(--clr-error)" },
-  MISSING: { icon: "?", color: "var(--clr-cashmere)" },
+const ADEQUACY_BADGE: Record<string, { label: string; bg: string; color: string; border: string }> = {
+  POSITIVE: { label: "Positif", bg: "#e0f5e9", color: "#1a7a3a", border: "#1a7a3a" },
+  NEUTRAL: { label: "Neutre", bg: "#fef8ec", color: "#8a6d2b", border: "#d4a843" },
+  NEGATIVE: { label: "Négatif", bg: "#fde8e8", color: "#b91c1c", border: "#b91c1c" },
+  MISSING: { label: "Manquant", bg: "#f3f4f6", color: "#6b7280", border: "#9ca3af" },
 };
 
 const RESULT_CONFIG: Record<string, { label: string; desc: string; color: string; bgColor: string }> = {
@@ -100,13 +112,16 @@ function generatePdfReport(data: {
     .result-box.inadequate, .result-box.overridden { background: #fdf2f2; border: 1px solid #c0392b; }
     .result-label { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
     .result-desc { font-size: 13px; color: #3d6b66; }
-    .criteria-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; font-size: 13px; border-bottom: 1px solid #e0f0ee; }
-    .criteria-row:last-child { border-bottom: none; }
-    .criteria-icon { width: 18px; text-align: center; font-weight: 700; margin-right: 8px; }
-    .positive { color: #1a5d56; }
-    .negative { color: #c0392b; }
-    .neutral-c { color: #e6a032; }
-    .missing { color: #7ab5af; }
+    .criteria-table { width: 100%; border-collapse: collapse; }
+    .criteria-table th { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #7ab5af; font-weight: 600; text-align: left; padding: 8px 12px; border-bottom: 1px solid #e0f0ee; }
+    .criteria-table th:last-child { text-align: right; }
+    .criteria-table td { padding: 10px 12px; border-bottom: 1px solid #e0f0ee; font-size: 13px; }
+    .criteria-table tr:last-child td { border-bottom: none; }
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+    .badge-positive { background: #e0f5e9; color: #1a7a3a; border: 1px solid #1a7a3a; }
+    .badge-neutral { background: #fef8ec; color: #8a6d2b; border: 1px solid #d4a843; }
+    .badge-negative { background: #fde8e8; color: #b91c1c; border: 1px solid #b91c1c; }
+    .badge-missing { background: #f3f4f6; color: #6b7280; border: 1px solid #9ca3af; }
     .disclaimer { font-size: 11px; color: #7ab5af; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e0f0ee; line-height: 1.5; }
     @media print { body { padding: 24px; } }
   </style>
@@ -142,14 +157,19 @@ function generatePdfReport(data: {
 
   ${data.criteria.length > 0 ? `
   <div class="section">
-    <div class="section-title">Détail par critère</div>
+    <div class="section-title">Détail par critère (${data.criteria.length})</div>
     <div style="border: 1px solid #e0f0ee; border-radius: 8px; overflow: hidden;">
-      ${data.criteria.map((c) => {
-        const iconClass = c.adequacy === "POSITIVE" ? "positive" : c.adequacy === "NEGATIVE" ? "negative" : c.adequacy === "NEUTRAL" ? "neutral-c" : "missing";
-        const icon = c.adequacy === "POSITIVE" ? "✓" : c.adequacy === "NEGATIVE" ? "✗" : c.adequacy === "NEUTRAL" ? "—" : "?";
-        const label = CRITERION_LABELS[c.criterionType] ?? c.criterionType;
-        return `<div class="criteria-row"><div style="display:flex;align-items:center;"><span class="criteria-icon ${iconClass}">${icon}</span><span>${label}</span></div><span style="color:#7ab5af;">${c.investorValue ?? "Non renseigné"}</span></div>`;
-      }).join("")}
+      <table class="criteria-table">
+        <thead><tr><th>Critère</th><th>Valeur investisseur</th><th style="text-align:right">Résultat</th></tr></thead>
+        <tbody>
+          ${data.criteria.map((c) => {
+            const badgeClass = c.adequacy === "POSITIVE" ? "badge-positive" : c.adequacy === "NEGATIVE" ? "badge-negative" : c.adequacy === "NEUTRAL" ? "badge-neutral" : "badge-missing";
+            const badgeLabel = c.adequacy === "POSITIVE" ? "Positif" : c.adequacy === "NEGATIVE" ? "Négatif" : c.adequacy === "NEUTRAL" ? "Neutre" : "Manquant";
+            const val = c.investorValue ? (INVESTOR_VALUE_LABELS[c.investorValue] ?? c.investorValue) : "—";
+            return `<tr><td>${c.criterionType}</td><td style="font-weight:600">${val}</td><td style="text-align:right"><span class="badge ${badgeClass}">${badgeLabel}</span></td></tr>`;
+          }).join("")}
+        </tbody>
+      </table>
     </div>
   </div>` : ""}
 
@@ -357,7 +377,7 @@ export default function AdequacyCheckStep({
             </p>
           </div>
 
-          {/* Detailed criteria */}
+          {/* Detailed criteria table */}
           {criteria.length > 0 && (
             <div style={{
               border: "1px solid var(--clr-stroke-dark)", borderRadius: "var(--radius-md)",
@@ -365,28 +385,37 @@ export default function AdequacyCheckStep({
             }}>
               <div style={{ padding: "var(--space-sm) var(--space-md)", background: "var(--clr-off-white)", borderBottom: "1px solid var(--clr-stroke-dark)" }}>
                 <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--clr-cashmere)" }}>
-                  Détail par critère
+                  Détail par critère ({criteria.length})
                 </span>
               </div>
+              {/* Header */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: "var(--space-sm)", padding: "var(--space-xs) var(--space-md)", borderBottom: "1px solid var(--clr-stroke-dark)", background: "var(--clr-off-white)" }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: "var(--clr-cashmere)", textTransform: "uppercase", letterSpacing: "0.03em" }}>Critère</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: "var(--clr-cashmere)", textTransform: "uppercase", letterSpacing: "0.03em", minWidth: 120 }}>Valeur</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: "var(--clr-cashmere)", textTransform: "uppercase", letterSpacing: "0.03em", minWidth: 80, textAlign: "right" }}>Résultat</span>
+              </div>
               {criteria.map((c, i) => {
-                const icon = ADEQUACY_ICONS[c.adequacy] ?? ADEQUACY_ICONS.MISSING;
+                const badge = ADEQUACY_BADGE[c.adequacy] ?? ADEQUACY_BADGE.MISSING;
+                const valueLabel = c.investorValue ? (INVESTOR_VALUE_LABELS[c.investorValue] ?? c.investorValue) : "—";
                 return (
                   <div key={c.criterionType} style={{
-                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    display: "grid", gridTemplateColumns: "1fr auto auto", gap: "var(--space-sm)", alignItems: "center",
                     padding: "var(--space-sm) var(--space-md)",
                     borderBottom: i < criteria.length - 1 ? "1px solid var(--clr-stroke-dark)" : undefined,
                     background: i % 2 === 0 ? "white" : "var(--clr-off-white)",
                   }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: icon.color }}>
-                        {icon.icon}
-                      </span>
-                      <span style={{ fontSize: 14, color: "var(--clr-obsidian)" }}>
-                        {CRITERION_LABELS[c.criterionType] ?? c.criterionType}
-                      </span>
-                    </div>
-                    <span style={{ fontSize: 13, color: "var(--clr-cashmere)", fontStyle: c.investorValue ? "normal" : "italic" }}>
-                      {c.investorValue ?? "Non renseigné"}
+                    <span style={{ fontSize: 14, color: "var(--clr-obsidian)" }}>
+                      {c.criterionType}
+                    </span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--clr-obsidian)", minWidth: 120 }}>
+                      {valueLabel}
+                    </span>
+                    <span style={{
+                      fontSize: 12, fontWeight: 600, padding: "2px 10px", borderRadius: 12,
+                      background: badge.bg, color: badge.color, border: `1px solid ${badge.border}`,
+                      minWidth: 80, textAlign: "center", whiteSpace: "nowrap",
+                    }}>
+                      {badge.label}
                     </span>
                   </div>
                 );
