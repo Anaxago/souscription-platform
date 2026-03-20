@@ -332,7 +332,7 @@ export default function InvestorProfileStep({
         }}>
           <div style={{
             height: "100%",
-            width: `${((currentCatIndex + 1) / categories.length) * 100}%`,
+            width: `${(currentCatIndex / categories.length) * 100}%`,
             background: "var(--clr-primary)",
             borderRadius: 2,
             transition: "width 0.3s ease",
