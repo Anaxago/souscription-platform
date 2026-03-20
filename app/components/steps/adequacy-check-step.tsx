@@ -275,8 +275,14 @@ export default function AdequacyCheckStep({
         stepId,
       });
       onComplete();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur");
+    } catch {
+      // Check might already be overridden — try completing the step directly
+      try {
+        await callAction({ type: "complete", journeyId, stepId });
+        onComplete();
+      } catch (e2) {
+        setError(e2 instanceof Error ? e2.message : "Erreur");
+      }
     } finally {
       setOverriding(false);
     }
