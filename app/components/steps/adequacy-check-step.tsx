@@ -12,6 +12,10 @@ interface Props {
   state: AdequacyState | null;
   actionUrl: string;
   onComplete: () => void;
+  investorDisplayName?: string | null;
+  investorEmail?: string | null;
+  investorPhone?: string | null;
+  riskTolerance?: string | null;
 }
 
 interface AdequacyState {
@@ -119,13 +123,38 @@ function generatePdfReport(data: {
   envelopeType: string;
   amount: string;
   investorType: string;
+  investorName: string;
+  investorEmail: string;
+  investorPhone: string;
+  riskTolerance: string | null;
   result: string;
   resultLabel: string;
   resultDesc: string;
   criteria: CriterionResult[];
   date: string;
 }) {
-  // Generate HTML report and open print dialog (native PDF save)
+  const RISK_LEVELS = ["CONSERVATIVE", "MODERATE", "BALANCED", "DYNAMIC", "AGGRESSIVE"];
+  const RISK_LABELS_PDF: Record<string, { label: string; desc: string }> = {
+    CONSERVATIVE: { label: "Prudent", desc: "Vous acceptez de faibles variations de rendements et tolérez des pertes occasionnelles en capital." },
+    MODERATE: { label: "Modéré", desc: "Vous acceptez des variations modérées et tolérez des pertes faibles pour une meilleure rentabilité." },
+    BALANCED: { label: "Équilibré", desc: "Vous acceptez des variations modérées et tolérez des pertes faibles pour une meilleure rentabilité attendue." },
+    DYNAMIC: { label: "Dynamique", desc: "Vous acceptez de fortes variations de rendement et des pertes modérées en vue de tirer la meilleure rentabilité." },
+    AGGRESSIVE: { label: "Offensif", desc: "Vous acceptez de fortes variations et de fortes pertes en capital car vous privilégiez la rentabilité." },
+  };
+
+  const riskIdx = data.riskTolerance ? RISK_LEVELS.indexOf(data.riskTolerance) : -1;
+  const riskInfo = data.riskTolerance ? RISK_LABELS_PDF[data.riskTolerance] : null;
+
+  // Extract specific criteria values for the profile section
+  const getCriterionValue = (type: string) => {
+    const c = data.criteria.find((cr) => cr.criterionType === type);
+    return c?.investorValue ? (INVESTOR_VALUE_LABELS[c.investorValue] ?? c.investorValue) : null;
+  };
+
+  const riskGaugeBars = RISK_LEVELS.map((_, i) =>
+    `<div style="flex:1;height:8px;border-radius:4px;background:${i <= riskIdx ? "#1a5d56" : "#d1d5db"}"></div>`
+  ).join("");
+
   const html = `<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -133,48 +162,120 @@ function generatePdfReport(data: {
   <title>Rapport d'adéquation — ${data.productName}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #0d2e2b; padding: 48px; line-height: 1.6; }
-    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; padding-bottom: 24px; border-bottom: 2px solid #1a5d56; }
-    .logo { font-size: 24px; font-weight: 700; color: #1a5d56; letter-spacing: -0.02em; }
-    .date { font-size: 12px; color: #3d6b66; }
-    h1 { font-size: 22px; font-weight: 600; color: #0d2e2b; margin-bottom: 8px; }
-    .subtitle { font-size: 14px; color: #3d6b66; margin-bottom: 32px; }
-    .section { margin-bottom: 28px; }
-    .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #3d6b66; margin-bottom: 12px; }
-    .table { width: 100%; border-collapse: collapse; }
-    .table td { padding: 12px 16px; border-bottom: 1px solid #e0f0ee; font-size: 14px; }
-    .table td:first-child { color: #3d6b66; width: 40%; }
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #0d2e2b; line-height: 1.6; }
+    @page { size: A4; margin: 2cm; }
+    .page { page-break-after: always; padding: 0; }
+    .page:last-child { page-break-after: avoid; }
+
+    /* Cover */
+    .cover { display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 80vh; text-align: center; }
+    .cover-logo { font-size: 36px; font-weight: 700; color: #1a5d56; letter-spacing: -0.02em; margin-bottom: 12px; }
+    .cover-subtitle { font-size: 14px; color: #3d6b66; font-style: italic; margin-bottom: 48px; }
+    .cover-title { font-size: 28px; font-weight: 600; color: #0d2e2b; margin-bottom: 16px; }
+    .cover-investor { font-size: 18px; color: #1a5d56; font-weight: 600; padding: 8px 24px; background: #fffacd; display: inline-block; margin-bottom: 48px; }
+    .cover-date { font-size: 13px; color: #7ab5af; }
+
+    /* Common */
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; padding-bottom: 16px; border-bottom: 2px solid #1a5d56; }
+    .logo { font-size: 20px; font-weight: 700; color: #1a5d56; }
+    .date { font-size: 11px; color: #7ab5af; }
+    .page-num { font-size: 10px; color: #7ab5af; text-align: center; margin-top: 32px; }
+    h1 { font-size: 20px; font-weight: 600; color: #0d2e2b; margin-bottom: 6px; }
+    h2 { font-size: 16px; font-weight: 600; color: #0d2e2b; margin-bottom: 12px; }
+    .subtitle { font-size: 13px; color: #3d6b66; margin-bottom: 24px; }
+    .section { margin-bottom: 24px; }
+    .section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #3d6b66; margin-bottom: 10px; }
+    p { font-size: 13px; margin-bottom: 12px; }
+
+    /* Tables */
+    .table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+    .table td, .table th { padding: 10px 14px; border-bottom: 1px solid #e0f0ee; font-size: 13px; text-align: left; }
+    .table td:first-child, .table th:first-child { color: #3d6b66; }
     .table td:last-child { font-weight: 600; }
-    .result-box { padding: 20px; border-radius: 8px; margin-bottom: 24px; }
+    .table-bordered { border: 1px solid #e0f0ee; border-radius: 6px; overflow: hidden; }
+    .table-bordered td, .table-bordered th { border: 1px solid #e0f0ee; }
+
+    /* Two column */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .two-col .col { border: 1px solid #e0f0ee; border-radius: 6px; padding: 16px; }
+    .col-title { font-size: 13px; font-weight: 700; color: #0d2e2b; margin-bottom: 8px; }
+    .col-row { font-size: 12px; color: #3d6b66; margin-bottom: 4px; }
+    .col-row strong { color: #0d2e2b; }
+
+    /* Result */
+    .result-box { padding: 16px; border-radius: 8px; margin-bottom: 16px; }
     .result-box.adequate { background: #e0f0ee; border: 1px solid #1a5d56; }
     .result-box.neutral { background: #fef8ec; border: 1px solid #e6a032; }
     .result-box.inadequate, .result-box.overridden { background: #fdf2f2; border: 1px solid #c0392b; }
-    .result-label { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
-    .result-desc { font-size: 13px; color: #3d6b66; }
-    .criteria-table { width: 100%; border-collapse: collapse; }
-    .criteria-table th { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #7ab5af; font-weight: 600; text-align: left; padding: 8px 12px; border-bottom: 1px solid #e0f0ee; }
-    .criteria-table th:last-child { text-align: right; }
-    .criteria-table td { padding: 10px 12px; border-bottom: 1px solid #e0f0ee; font-size: 13px; }
-    .criteria-table tr:last-child td { border-bottom: none; }
-    .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+    .result-label { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .result-desc { font-size: 12px; color: #3d6b66; }
+
+    /* Badges */
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; }
     .badge-positive { background: #e0f5e9; color: #1a7a3a; border: 1px solid #1a7a3a; }
     .badge-neutral { background: #fef8ec; color: #8a6d2b; border: 1px solid #d4a843; }
     .badge-negative { background: #fde8e8; color: #b91c1c; border: 1px solid #b91c1c; }
     .badge-missing { background: #f3f4f6; color: #6b7280; border: 1px solid #9ca3af; }
-    .disclaimer { font-size: 11px; color: #7ab5af; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e0f0ee; line-height: 1.5; }
-    @media print { body { padding: 24px; } }
+
+    /* Risk gauge */
+    .gauge { display: flex; gap: 4px; width: 200px; margin: 8px 0; }
+    .gauge-label { font-size: 12px; font-weight: 600; color: #1a5d56; }
+
+    /* Adequacy matrix */
+    .matrix td { font-size: 12px; padding: 8px 10px; }
+    .matrix th { font-size: 10px; padding: 8px 10px; text-transform: uppercase; letter-spacing: 0.03em; color: #7ab5af; font-weight: 600; }
+
+    .footer { font-size: 9px; color: #7ab5af; text-align: center; margin-top: 24px; padding-top: 12px; border-top: 1px solid #e0f0ee; line-height: 1.4; }
+    .disclaimer { font-size: 10px; color: #7ab5af; line-height: 1.5; margin-top: 16px; padding: 12px; background: #f9fafb; border-radius: 6px; }
+
+    @media print { .page { page-break-after: always; } .page:last-child { page-break-after: avoid; } }
   </style>
 </head>
 <body>
-  <div class="header">
-    <div>
-      <div class="logo">Stanza</div>
+
+<!-- ═══ PAGE 1: COVER ═══ -->
+<div class="page">
+  <div class="cover">
+    <div class="cover-logo">Stanza</div>
+    <div class="cover-subtitle">Plateforme d'investissement alternatif</div>
+    <div class="cover-title">RAPPORT D'ADÉQUATION</div>
+    <div class="cover-investor">${data.investorName}</div>
+    <div class="cover-date">${data.date}</div>
+    <div style="margin-top:24px;font-size:12px;color:#7ab5af;">
+      Directive MiFID II / DDA — Test d'adéquation réglementaire
     </div>
-    <div class="date">${data.date}</div>
+  </div>
+</div>
+
+<!-- ═══ PAGE 2: INTRODUCTION + IDENTITÉ ═══ -->
+<div class="page">
+  <div class="header"><div class="logo">Stanza</div><div class="date">${data.date}</div></div>
+
+  <div class="section">
+    <p>Cher(e) ${data.investorName},</p>
+    <p>Dans le cadre de votre projet d'investissement, Stanza a procédé à l'évaluation de l'adéquation du produit financier envisagé avec votre profil investisseur.</p>
+    <p>Ce rapport est établi conformément aux obligations réglementaires (Directive MiFID II / DDA). Il prend en compte votre situation patrimoniale et financière, vos objectifs et horizon d'investissement, votre niveau de connaissance et d'expérience en matière financière, votre tolérance au risque, votre capacité à subir des pertes ainsi que vos préférences en matière de durabilité.</p>
+    <p>Nous vous en souhaitons bonne réception et restons à votre disposition pour tout complément d'informations.</p>
   </div>
 
-  <h1>Rapport d'adéquation</h1>
-  <p class="subtitle">Évaluation réglementaire de l'adéquation du produit au profil investisseur</p>
+  <div class="section">
+    <div class="section-title">Identité</div>
+    <div class="two-col">
+      <div class="col">
+        <div class="col-title">L'investisseur</div>
+        <div class="col-row">Nom : <strong>${data.investorName}</strong></div>
+        <div class="col-row">Email : <strong>${data.investorEmail}</strong></div>
+        <div class="col-row">Téléphone : <strong>${data.investorPhone}</strong></div>
+        <div class="col-row">Type : <strong>${data.investorType === "NATURAL" ? "Personne physique" : "Personne morale"}</strong></div>
+      </div>
+      <div class="col">
+        <div class="col-title">La plateforme</div>
+        <div class="col-row">Société : <strong>Stanza</strong></div>
+        <div class="col-row">Statut : <strong>CIF / COA</strong></div>
+        <div class="col-row">Date du rapport : <strong>${data.date}</strong></div>
+      </div>
+    </div>
+  </div>
 
   <div class="section">
     <div class="section-title">Détails de la souscription</div>
@@ -186,8 +287,60 @@ function generatePdfReport(data: {
     </table>
   </div>
 
+  <div class="footer">Stanza — Rapport d'adéquation — ${data.date} — Page 2</div>
+</div>
+
+<!-- ═══ PAGE 3: PROFIL INVESTISSEUR ═══ -->
+<div class="page">
+  <div class="header"><div class="logo">Stanza</div><div class="date">${data.date}</div></div>
+  <h1>VOTRE PROFIL D'INVESTISSEUR</h1>
+  <p class="subtitle">Synthèse de votre profil établi sur la base de vos réponses au questionnaire de connaissance client.</p>
+
   <div class="section">
-    <div class="section-title">Résultat du test d'adéquation</div>
+    <table class="table">
+      ${getCriterionValue("MIFID_CLASSIFICATION") ? `<tr><td>Classification MiFID</td><td>${getCriterionValue("MIFID_CLASSIFICATION")}</td></tr>` : ""}
+      ${getCriterionValue("FINANCIAL_KNOWLEDGE") ? `<tr><td>Connaissances financières</td><td>${getCriterionValue("FINANCIAL_KNOWLEDGE")}</td></tr>` : ""}
+      ${getCriterionValue("FINANCIAL_EXPERIENCE") ? `<tr><td>Expérience financière</td><td>${getCriterionValue("FINANCIAL_EXPERIENCE")}</td></tr>` : ""}
+      ${getCriterionValue("LOSS_CAPACITY") ? `<tr><td>Capacité à subir des pertes</td><td>${getCriterionValue("LOSS_CAPACITY")}</td></tr>` : ""}
+      ${getCriterionValue("INVESTMENT_HORIZON") ? `<tr><td>Horizon de placement</td><td>${getCriterionValue("INVESTMENT_HORIZON")}</td></tr>` : ""}
+      ${getCriterionValue("INVESTMENT_OBJECTIVE") ? `<tr><td>Objectif d'investissement</td><td>${getCriterionValue("INVESTMENT_OBJECTIVE")}</td></tr>` : ""}
+    </table>
+  </div>
+
+  ${riskInfo ? `
+  <div class="section">
+    <div class="section-title">Votre profil de risque</div>
+    <div style="padding:16px;border:1px solid #e0f0ee;border-radius:8px;background:#f9fafb;">
+      <div class="gauge-label">${riskInfo.label} (${riskIdx + 1}/5)</div>
+      <div class="gauge">${riskGaugeBars}</div>
+      <p style="font-size:12px;color:#3d6b66;margin:8px 0 0;">${riskInfo.desc}</p>
+    </div>
+  </div>` : ""}
+
+  <div class="section">
+    <div class="section-title">Préférences en matière de durabilité</div>
+    <table class="table">
+      ${getCriterionValue("ESG_PREFERENCE") ? `<tr><td>Investissement ESG (SFDR 2019/2088)</td><td>${getCriterionValue("ESG_PREFERENCE")}</td></tr>` : ""}
+      ${getCriterionValue("TAXONOMY_PREFERENCE") ? `<tr><td>Alignement Taxonomie (2020/852)</td><td>${getCriterionValue("TAXONOMY_PREFERENCE")}</td></tr>` : ""}
+      ${getCriterionValue("PAI_CONSIDERATION") ? `<tr><td>Prise en compte des PAI</td><td>${getCriterionValue("PAI_CONSIDERATION")}</td></tr>` : ""}
+    </table>
+  </div>
+
+  <div class="disclaimer">
+    <strong>Gestion des risques</strong> — Il est généralement admis qu'un investissement présentant un risque de perte en capital ne doit pas à lui seul représenter plus de 5 % à 10 % du patrimoine financier d'un investisseur et ne doit excéder une année de capacité d'épargne.
+  </div>
+
+  <div class="footer">Stanza — Rapport d'adéquation — ${data.date} — Page 3</div>
+</div>
+
+<!-- ═══ PAGE 4: JUSTIFICATION DE L'ADÉQUATION ═══ -->
+<div class="page">
+  <div class="header"><div class="logo">Stanza</div><div class="date">${data.date}</div></div>
+  <h1>JUSTIFICATION DE L'ADÉQUATION</h1>
+  <p class="subtitle">Matrice d'adéquation du produit recommandé avec votre profil investisseur, basée sur les informations communiquées et les caractéristiques du produit (marché cible).</p>
+
+  <div class="section">
+    <div class="section-title">Résultat global</div>
     <div class="result-box ${data.result.toLowerCase()}">
       <div class="result-label" style="color: ${data.result === "ADEQUATE" ? "#1a5d56" : data.result === "NEUTRAL" ? "#e6a032" : "#c0392b"}">${data.resultLabel}</div>
       <div class="result-desc">${data.resultDesc}</div>
@@ -197,9 +350,9 @@ function generatePdfReport(data: {
   ${data.criteria.length > 0 ? `
   <div class="section">
     <div class="section-title">Détail par critère (${data.criteria.length})</div>
-    <div style="border: 1px solid #e0f0ee; border-radius: 8px; overflow: hidden;">
-      <table class="criteria-table">
-        <thead><tr><th>Critère</th><th>Valeur investisseur</th><th style="text-align:right">Résultat</th></tr></thead>
+    <div class="table-bordered">
+      <table class="table matrix" style="margin:0">
+        <thead><tr><th style="width:45%">Critère</th><th style="width:30%">Valeur investisseur</th><th style="width:25%;text-align:right">Résultat</th></tr></thead>
         <tbody>
           ${data.criteria.map((c) => {
             const badgeClass = c.adequacy === "POSITIVE" ? "badge-positive" : c.adequacy === "NEGATIVE" ? "badge-negative" : c.adequacy === "NEUTRAL" ? "badge-neutral" : "badge-missing";
@@ -212,13 +365,57 @@ function generatePdfReport(data: {
     </div>
   </div>` : ""}
 
+  ${data.result === "INADEQUATE" || data.result === "OVERRIDDEN" ? `
   <div class="disclaimer">
-    <strong>Avertissement</strong> — Ce rapport est généré automatiquement dans le cadre de l'obligation réglementaire de test d'adéquation (MiFID II / DDA).
-    Il ne constitue pas un conseil en investissement. Les performances passées ne préjugent pas des performances futures.
-    L'investissement dans des produits financiers comporte des risques, y compris la perte partielle ou totale du capital investi.
-    <br><br>
-    Document généré le ${data.date} par la plateforme Stanza.
+    <strong>Déclaration</strong> — La souscription envisagée n'est pas totalement en adéquation avec le profil de l'investisseur. L'investisseur a été informé de cette inadéquation et a confirmé sa volonté de poursuivre l'investissement en acceptant les risques associés.
+  </div>` : ""}
+
+  <div class="footer">Stanza — Rapport d'adéquation — ${data.date} — Page 4</div>
+</div>
+
+<!-- ═══ PAGE 5: AVERTISSEMENTS & SIGNATURE ═══ -->
+<div class="page">
+  <div class="header"><div class="logo">Stanza</div><div class="date">${data.date}</div></div>
+  <h1>AVERTISSEMENTS RÉGLEMENTAIRES</h1>
+
+  <div class="disclaimer" style="margin-bottom:24px;">
+    <strong>Avertissement</strong> — Ce rapport est généré automatiquement dans le cadre de l'obligation réglementaire de test d'adéquation (MiFID II / DDA). Il ne constitue pas un conseil en investissement personnalisé. Les performances passées ne préjugent pas des performances futures. L'investissement dans des produits financiers comporte des risques, y compris la perte partielle ou totale du capital investi.
   </div>
+
+  <div class="disclaimer" style="margin-bottom:24px;">
+    <strong>Risque de perte en capital</strong> — Les investissements proposés présentent un risque de perte en capital. Le capital investi n'est pas garanti. L'investisseur peut perdre tout ou partie de son investissement initial.
+  </div>
+
+  <div class="disclaimer" style="margin-bottom:24px;">
+    <strong>Risque d'illiquidité</strong> — Les produits d'investissement alternatif sont généralement illiquides. Il peut être difficile, voire impossible, de revendre ou de transférer les participations avant l'échéance prévue.
+  </div>
+
+  <div class="section" style="margin-top:48px;">
+    <div class="section-title">Date et signature</div>
+    <div class="two-col">
+      <div class="col">
+        <div class="col-title">L'investisseur</div>
+        <div class="col-row">Nom : ${data.investorName}</div>
+        <div class="col-row">Date : ${data.date}</div>
+        <div style="margin-top:40px;border-bottom:1px solid #3d6b66;width:200px;"></div>
+        <div class="col-row" style="margin-top:4px;font-style:italic;">Signature</div>
+      </div>
+      <div class="col">
+        <div class="col-title">La plateforme</div>
+        <div class="col-row">Stanza</div>
+        <div class="col-row">Date : ${data.date}</div>
+        <div style="margin-top:40px;border-bottom:1px solid #3d6b66;width:200px;"></div>
+        <div class="col-row" style="margin-top:4px;font-style:italic;">Signature</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer" style="margin-top:auto;">
+    Document généré le ${data.date} par la plateforme Stanza.<br>
+    Ce document est confidentiel et destiné exclusivement à l'investisseur désigné.
+  </div>
+</div>
+
 </body>
 </html>`;
 
@@ -226,9 +423,7 @@ function generatePdfReport(data: {
   const url = URL.createObjectURL(blob);
   const win = window.open(url, "_blank");
   if (win) {
-    win.onload = () => {
-      setTimeout(() => win.print(), 300);
-    };
+    win.onload = () => setTimeout(() => win.print(), 300);
   }
 }
 
@@ -244,6 +439,10 @@ export default function AdequacyCheckStep({
   state,
   actionUrl,
   onComplete,
+  investorDisplayName,
+  investorEmail,
+  investorPhone,
+  riskTolerance,
 }: Props) {
   const [checking, setChecking] = useState(false);
   const [overriding, setOverriding] = useState(false);
@@ -352,6 +551,10 @@ export default function AdequacyCheckStep({
       envelopeType: envelopeType ? (ENVELOPE_LABELS[envelopeType] ?? envelopeType) : "—",
       amount: amount ? formatEuros(amount) : "—",
       investorType,
+      investorName: investorDisplayName ?? "—",
+      investorEmail: investorEmail ?? "—",
+      investorPhone: investorPhone ?? "—",
+      riskTolerance: riskTolerance ?? null,
       result: result ?? "UNKNOWN",
       resultLabel: resultInfo?.label ?? "—",
       resultDesc: resultInfo?.desc ?? "—",
