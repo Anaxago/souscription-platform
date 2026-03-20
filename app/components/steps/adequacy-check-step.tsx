@@ -737,7 +737,7 @@ export default function AdequacyCheckStep({
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 15, fontWeight: 600, color: "var(--clr-obsidian)" }}>Votre conseiller Stanza</div>
               <div style={{ fontSize: 13, color: "var(--clr-cashmere)" }}>
-                Ce produit ne correspond pas entièrement à votre profil. Un conseiller peut vous accompagner dans votre démarche.
+                Pour votre protection, nous ne pouvons pas valider cette transaction en ligne. Nous vous invitons à contacter votre conseiller pour discuter de votre projet et ajuster votre stratégie d'investissement.
               </div>
             </div>
             <button
