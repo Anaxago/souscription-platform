@@ -137,8 +137,7 @@ export default function KnowledgeQuizStep({
       const totalQuestions = quiz.questions.length;
 
       setResult({ score, outcome, totalQuestions });
-
-      // Don't auto-advance — show the result screen first
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Erreur inconnue";
       setError(msg);
