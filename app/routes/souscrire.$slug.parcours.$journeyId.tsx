@@ -229,7 +229,124 @@ export function meta({ data }: Route.MetaArgs) {
    Component
    ────────────────────────────────────────────── */
 
-function JourneyCompleted({ journey, marketingProductName, actionUrl }: { journey: SubscriptionJourney; marketingProductName: string | null; actionUrl: string }) {
+const ENVELOPE_LABELS: Record<string, string> = {
+  AV: "Assurance-vie",
+  PER: "PER",
+  CTO: "Compte-titres",
+  PEA: "PEA",
+  PEA_PME: "PEA-PME",
+  DIRECT_OWNERSHIP: "Détention directe",
+};
+
+function formatEuros(cents: number): string {
+  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", minimumFractionDigits: 0 }).format(cents / 100);
+}
+
+function generateOrderRecap(data: {
+  orderId: string;
+  productName: string;
+  investorType: string;
+  riskTolerance: string | null;
+  envelopeType: string | null;
+  amount: number | null;
+  steps: { name: string; status: string }[];
+  date: string;
+  journeyId: string;
+  investorId: string;
+}) {
+  const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Récapitulatif de souscription — ${data.productName}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #0d2e2b; padding: 48px; line-height: 1.6; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; padding-bottom: 24px; border-bottom: 2px solid #1a5d56; }
+    .logo { font-size: 24px; font-weight: 700; color: #1a5d56; }
+    .date { font-size: 12px; color: #3d6b66; }
+    h1 { font-size: 22px; font-weight: 600; margin-bottom: 8px; }
+    .subtitle { font-size: 14px; color: #3d6b66; margin-bottom: 32px; }
+    .section { margin-bottom: 28px; }
+    .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #3d6b66; margin-bottom: 12px; }
+    .table { width: 100%; border-collapse: collapse; }
+    .table td { padding: 12px 16px; border-bottom: 1px solid #e0f0ee; font-size: 14px; }
+    .table td:first-child { color: #3d6b66; width: 40%; }
+    .table td:last-child { font-weight: 600; }
+    .order-ref { display: inline-block; background: #e0f0ee; padding: 6px 16px; border-radius: 6px; font-family: monospace; font-size: 13px; color: #1a5d56; font-weight: 600; margin-bottom: 24px; }
+    .steps-table { width: 100%; border-collapse: collapse; }
+    .steps-table td { padding: 8px 16px; border-bottom: 1px solid #e0f0ee; font-size: 13px; }
+    .steps-table td:last-child { text-align: right; }
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+    .badge-completed { background: #e0f5e9; color: #1a7a3a; }
+    .badge-progress { background: #fef8ec; color: #8a6d2b; }
+    .success-box { background: #e0f0ee; border: 1px solid #1a5d56; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 24px; }
+    .success-box h2 { color: #1a5d56; font-size: 18px; margin-bottom: 4px; }
+    .success-box p { color: #3d6b66; font-size: 13px; }
+    .disclaimer { font-size: 11px; color: #7ab5af; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e0f0ee; line-height: 1.5; }
+    @media print { body { padding: 24px; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">Stanza</div>
+    <div class="date">${data.date}</div>
+  </div>
+
+  <h1>Récapitulatif de souscription</h1>
+  <p class="subtitle">Confirmation de votre ordre de souscription</p>
+
+  <div class="success-box">
+    <h2>Ordre transmis avec succès</h2>
+    <p>Référence : <span class="order-ref">${data.orderId.slice(0, 8)}</span></p>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Détails de l'investissement</div>
+    <table class="table">
+      <tr><td>Produit</td><td>${data.productName}</td></tr>
+      <tr><td>Type d'investisseur</td><td>${data.investorType === "NATURAL" ? "Personne physique" : "Personne morale"}</td></tr>
+      <tr><td>Profil de risque</td><td>${data.riskTolerance ?? "Non évalué"}</td></tr>
+      <tr><td>Enveloppe</td><td>${data.envelopeType ?? "—"}</td></tr>
+      <tr><td>Montant engagé</td><td>${data.amount != null ? new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", minimumFractionDigits: 0 }).format(data.amount / 100) : "—"}</td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Identifiants</div>
+    <table class="table">
+      <tr><td>Référence ordre</td><td style="font-family:monospace">${data.orderId}</td></tr>
+      <tr><td>Parcours</td><td style="font-family:monospace">${data.journeyId}</td></tr>
+      <tr><td>Investisseur</td><td style="font-family:monospace">${data.investorId}</td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Étapes du parcours</div>
+    <table class="steps-table">
+      ${data.steps.map((s) => `<tr><td>${s.name}</td><td><span class="badge ${s.status === "COMPLETED" ? "badge-completed" : "badge-progress"}">${s.status === "COMPLETED" ? "Complété" : s.status}</span></td></tr>`).join("")}
+    </table>
+  </div>
+
+  <div class="disclaimer">
+    <strong>Avertissement</strong> — Ce document constitue un récapitulatif de votre ordre de souscription.
+    Il ne constitue pas un conseil en investissement. L'investissement dans des produits financiers comporte des risques,
+    y compris la perte partielle ou totale du capital investi. Les performances passées ne préjugent pas des performances futures.
+    <br><br>
+    Document généré le ${data.date} par la plateforme Stanza.
+  </div>
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, "_blank");
+  if (win) {
+    win.onload = () => setTimeout(() => win.print(), 300);
+  }
+}
+
+function JourneyCompleted({ journey, marketingProductName, riskTolerance, actionUrl }: { journey: SubscriptionJourney; marketingProductName: string | null; riskTolerance: string | null; actionUrl: string }) {
   const [ordering, setOrdering] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -279,6 +396,29 @@ function JourneyCompleted({ journey, marketingProductName, actionUrl }: { journe
     }
   }
 
+  const envelopeType = basket?.envelopeTarget?.envelopeType ?? null;
+  const amount = basket?.lines?.[0]?.requestedAmount ?? null;
+  const applicableSteps = journey.steps.filter((s) => s.isApplicable).sort((a, b) => a.position - b.position);
+
+  function handleDownloadRecap() {
+    if (!orderId) return;
+    generateOrderRecap({
+      orderId,
+      productName: marketingProductName ?? "—",
+      investorType: journey.investorType === "LEGAL" ? "LEGAL" : "NATURAL",
+      riskTolerance: riskTolerance ? (RISK_TOLERANCE_LABELS[riskTolerance] ?? riskTolerance) : null,
+      envelopeType: envelopeType ? (ENVELOPE_LABELS[envelopeType] ?? envelopeType) : null,
+      amount,
+      steps: applicableSteps.map((s) => ({
+        name: STEP_TYPE_LABELS[s.stepType] ?? s.stepType,
+        status: s.stepStatus,
+      })),
+      date: new Date().toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }),
+      journeyId: journey.id,
+      investorId: journey.investorId,
+    });
+  }
+
   if (orderId) {
     return (
       <div style={{ padding: "var(--space-2xl) var(--space-xl)", background: "var(--clr-primary-light)", borderRadius: "var(--radius-md)", textAlign: "center" }}>
@@ -289,9 +429,47 @@ function JourneyCompleted({ journey, marketingProductName, actionUrl }: { journe
         <p style={{ fontSize: 15, color: "var(--clr-cashmere)", maxWidth: 420, margin: "0 auto var(--space-sm)" }}>
           Votre ordre de souscription pour <strong>{marketingProductName}</strong> a été transmis avec succès.
         </p>
-        <p style={{ fontSize: 13, color: "var(--clr-cashmere)", fontFamily: "monospace" }}>
+        <p style={{ fontSize: 13, color: "var(--clr-cashmere)", fontFamily: "monospace", marginBottom: "var(--space-lg)" }}>
           Réf. {orderId.slice(0, 8)}
         </p>
+
+        {/* Summary table */}
+        <div style={{ textAlign: "left", border: "1px solid var(--clr-stroke-dark)", borderRadius: "var(--radius-md)", overflow: "hidden", marginBottom: "var(--space-md)" }}>
+          {[
+            { label: "Produit", value: marketingProductName ?? "—" },
+            { label: "Profil de risque", value: riskTolerance ? (RISK_TOLERANCE_LABELS[riskTolerance] ?? riskTolerance) : "Non évalué" },
+            { label: "Enveloppe", value: envelopeType ? (ENVELOPE_LABELS[envelopeType] ?? envelopeType) : "—" },
+            { label: "Montant engagé", value: amount ? formatEuros(amount) : "—" },
+            { label: "Type d'investisseur", value: journey.investorType === "LEGAL" ? "Personne morale" : "Personne physique" },
+            { label: "Référence", value: orderId.slice(0, 8) },
+          ].map((row, i) => (
+            <div key={row.label} style={{
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+              padding: "var(--space-sm) var(--space-md)",
+              background: i % 2 === 0 ? "white" : "var(--clr-off-white)",
+            }}>
+              <span style={{ fontSize: 14, color: "var(--clr-cashmere)", fontWeight: 500 }}>{row.label}</span>
+              <span style={{ fontSize: 14, color: "var(--clr-obsidian)", fontWeight: 600 }}>{row.value}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Download button */}
+        <button
+          onClick={handleDownloadRecap}
+          style={{
+            width: "100%", padding: "var(--space-sm)", marginBottom: "var(--space-sm)",
+            background: "none", border: "1.5px solid var(--clr-primary)", borderRadius: "var(--radius-pill)",
+            color: "var(--clr-primary)", cursor: "pointer", fontSize: 14, fontWeight: 600,
+            fontFamily: "var(--font-display)",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          Télécharger le récapitulatif
+        </button>
       </div>
     );
   }
@@ -570,7 +748,7 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
 
           {/* Journey completed — create order */}
           {journey.status === "COMPLETED" && (
-            <JourneyCompleted journey={journey} marketingProductName={marketingProduct?.name ?? null} actionUrl={actionUrl} />
+            <JourneyCompleted journey={journey} marketingProductName={marketingProduct?.name ?? null} riskTolerance={riskTolerance} actionUrl={actionUrl} />
           )}
         </section>
       </main>
