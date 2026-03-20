@@ -1402,7 +1402,7 @@ html, body {
    ────────────────────────────────────────────── */
 .catalogue-hero {
   background: var(--clr-obsidian);
-  padding: calc(var(--space-2xl) + 68px) var(--space-xl) var(--space-xl);
+  padding: calc(var(--space-md) + 68px) var(--space-xl) var(--space-md);
 }
 .catalogue-hero__inner {
   max-width: var(--max-width);
