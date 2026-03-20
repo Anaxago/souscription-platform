@@ -18,6 +18,30 @@ interface AdequacyState {
   overridden: boolean;
 }
 
+interface CriterionResult {
+  criterionType: string;
+  investorValue: string | null;
+  adequacy: "POSITIVE" | "NEUTRAL" | "NEGATIVE" | "MISSING";
+}
+
+const CRITERION_LABELS: Record<string, string> = {
+  RISK_TOLERANCE: "Tolérance au risque",
+  INVESTMENT_HORIZON: "Horizon d'investissement",
+  KNOWLEDGE_LEVEL: "Niveau de connaissance",
+  LOSS_CAPACITY: "Capacité de perte",
+  FINANCIAL_SITUATION: "Situation financière",
+  INVESTMENT_OBJECTIVE: "Objectif d'investissement",
+  EXPERIENCE: "Expérience",
+  ESG_PREFERENCE: "Préférence ESG",
+};
+
+const ADEQUACY_ICONS: Record<string, { icon: string; color: string }> = {
+  POSITIVE: { icon: "✓", color: "var(--clr-primary)" },
+  NEUTRAL: { icon: "—", color: "var(--clr-warning)" },
+  NEGATIVE: { icon: "✗", color: "var(--clr-error)" },
+  MISSING: { icon: "?", color: "var(--clr-cashmere)" },
+};
+
 const RESULT_CONFIG: Record<string, { label: string; desc: string; color: string; bgColor: string }> = {
   ADEQUATE: { label: "Adéquat", desc: "Ce produit est adapté à votre profil investisseur.", color: "var(--clr-primary)", bgColor: "var(--clr-primary-light)" },
   NEUTRAL: { label: "Neutre", desc: "Les informations disponibles ne permettent pas de confirmer pleinement l'adéquation. Vous pouvez poursuivre.", color: "var(--clr-warning)", bgColor: "var(--clr-warning-light)" },
@@ -47,6 +71,7 @@ function generatePdfReport(data: {
   result: string;
   resultLabel: string;
   resultDesc: string;
+  criteria: CriterionResult[];
   date: string;
 }) {
   // Generate HTML report and open print dialog (native PDF save)
@@ -75,6 +100,13 @@ function generatePdfReport(data: {
     .result-box.inadequate, .result-box.overridden { background: #fdf2f2; border: 1px solid #c0392b; }
     .result-label { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
     .result-desc { font-size: 13px; color: #3d6b66; }
+    .criteria-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; font-size: 13px; border-bottom: 1px solid #e0f0ee; }
+    .criteria-row:last-child { border-bottom: none; }
+    .criteria-icon { width: 18px; text-align: center; font-weight: 700; margin-right: 8px; }
+    .positive { color: #1a5d56; }
+    .negative { color: #c0392b; }
+    .neutral-c { color: #e6a032; }
+    .missing { color: #7ab5af; }
     .disclaimer { font-size: 11px; color: #7ab5af; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e0f0ee; line-height: 1.5; }
     @media print { body { padding: 24px; } }
   </style>
@@ -107,6 +139,19 @@ function generatePdfReport(data: {
       <div class="result-desc">${data.resultDesc}</div>
     </div>
   </div>
+
+  ${data.criteria.length > 0 ? `
+  <div class="section">
+    <div class="section-title">Détail par critère</div>
+    <div style="border: 1px solid #e0f0ee; border-radius: 8px; overflow: hidden;">
+      ${data.criteria.map((c) => {
+        const iconClass = c.adequacy === "POSITIVE" ? "positive" : c.adequacy === "NEGATIVE" ? "negative" : c.adequacy === "NEUTRAL" ? "neutral-c" : "missing";
+        const icon = c.adequacy === "POSITIVE" ? "✓" : c.adequacy === "NEGATIVE" ? "✗" : c.adequacy === "NEUTRAL" ? "—" : "?";
+        const label = CRITERION_LABELS[c.criterionType] ?? c.criterionType;
+        return `<div class="criteria-row"><div style="display:flex;align-items:center;"><span class="criteria-icon ${iconClass}">${icon}</span><span>${label}</span></div><span style="color:#7ab5af;">${c.investorValue ?? "Non renseigné"}</span></div>`;
+      }).join("")}
+    </div>
+  </div>` : ""}
 
   <div class="disclaimer">
     <strong>Avertissement</strong> — Ce rapport est généré automatiquement dans le cadre de l'obligation réglementaire de test d'adéquation (MiFID II / DDA).
@@ -143,6 +188,7 @@ export default function AdequacyCheckStep({
   const [overriding, setOverriding] = useState(false);
   const [result, setResult] = useState<string | null>(state?.result ?? null);
   const [lastCheckId, setLastCheckId] = useState<string | null>(state?.lastCheckId ?? null);
+  const [criteria, setCriteria] = useState<CriterionResult[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   async function callAction(payload: Record<string, unknown>) {
@@ -174,6 +220,18 @@ export default function AdequacyCheckStep({
       if (updatedStep?.state) {
         setResult(updatedStep.state.result);
         setLastCheckId(updatedStep.state.lastCheckId);
+        // Fetch detailed criteria results
+        if (updatedStep.state.lastCheckId) {
+          try {
+            const check = await callAction({ type: "fetch-adequacy-check", checkId: updatedStep.state.lastCheckId });
+            const details = (check as { details?: { criteriaResults?: CriterionResult[] } }).details;
+            if (details?.criteriaResults) {
+              setCriteria(details.criteriaResults);
+            }
+          } catch {
+            // Non-blocking — details are optional
+          }
+        }
       }
       if (updatedStep?.state?.result === "ADEQUATE" || updatedStep?.state?.result === "OVERRIDDEN") {
         onComplete();
@@ -214,6 +272,7 @@ export default function AdequacyCheckStep({
       result: result ?? "UNKNOWN",
       resultLabel: resultInfo?.label ?? "—",
       resultDesc: resultInfo?.desc ?? "—",
+      criteria,
       date: new Date().toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }),
     });
   }
@@ -297,6 +356,43 @@ export default function AdequacyCheckStep({
               {resultInfo.desc}
             </p>
           </div>
+
+          {/* Detailed criteria */}
+          {criteria.length > 0 && (
+            <div style={{
+              border: "1px solid var(--clr-stroke-dark)", borderRadius: "var(--radius-md)",
+              overflow: "hidden", marginBottom: "var(--space-md)",
+            }}>
+              <div style={{ padding: "var(--space-sm) var(--space-md)", background: "var(--clr-off-white)", borderBottom: "1px solid var(--clr-stroke-dark)" }}>
+                <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--clr-cashmere)" }}>
+                  Détail par critère
+                </span>
+              </div>
+              {criteria.map((c, i) => {
+                const icon = ADEQUACY_ICONS[c.adequacy] ?? ADEQUACY_ICONS.MISSING;
+                return (
+                  <div key={c.criterionType} style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    padding: "var(--space-sm) var(--space-md)",
+                    borderBottom: i < criteria.length - 1 ? "1px solid var(--clr-stroke-dark)" : undefined,
+                    background: i % 2 === 0 ? "white" : "var(--clr-off-white)",
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: icon.color }}>
+                        {icon.icon}
+                      </span>
+                      <span style={{ fontSize: 14, color: "var(--clr-obsidian)" }}>
+                        {CRITERION_LABELS[c.criterionType] ?? c.criterionType}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: 13, color: "var(--clr-cashmere)", fontStyle: c.investorValue ? "normal" : "italic" }}>
+                      {c.investorValue ?? "Non renseigné"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* Download report button */}
           <button

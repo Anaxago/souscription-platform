@@ -17,6 +17,7 @@ type ActionPayload =
   | { type: "set-envelope-target"; journeyId: string; targetType: string; envelopeType: string; existingEnvelopeRef?: string; provider?: string }
   | { type: "update-basket-dismemberment"; journeyId: string; dismembermentType: string }
   | { type: "evaluate-adequacy"; journeyId: string; stepId: string; investorType: string }
+  | { type: "fetch-adequacy-check"; checkId: string }
   | { type: "override-adequacy"; checkId: string; journeyId: string; stepId: string }
   | { type: "upload-journey-document"; journeyId: string; stepId: string; documentType: string; documentId: string; fileName: string }
   | { type: "update-person-kernel"; personKernelId: string; firstName: string; lastName: string }
@@ -253,6 +254,16 @@ export async function action({ request }: Route.ActionArgs) {
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         return errorResponse((err as Record<string, string>).message ?? "Erreur adéquation", res.status);
+      }
+      return Response.json(await res.json());
+    }
+
+    /* ── Fetch adequacy check details ── */
+    case "fetch-adequacy-check": {
+      const res = await api(`/adequacy-checks/${body.checkId}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return errorResponse((err as Record<string, string>).message ?? "Erreur récupération check", res.status);
       }
       return Response.json(await res.json());
     }
