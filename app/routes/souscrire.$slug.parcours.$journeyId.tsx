@@ -735,7 +735,7 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
                 fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600,
                 color: "var(--clr-primary)", letterSpacing: "0.02em",
               }}>
-                Stanz&apos;IA
+                Stanza
               </span>
               <style>{`@keyframes stanzia-spin { to { transform: rotate(360deg); } }`}</style>
             </div>
