@@ -275,9 +275,7 @@ export default function AdequacyCheckStep({
           }
         }
       }
-      if (updatedStep?.state?.result === "ADEQUATE" || updatedStep?.state?.result === "OVERRIDDEN") {
-        onComplete();
-      }
+      // Always show results — user clicks "Continuer" to proceed
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur");
     } finally {
