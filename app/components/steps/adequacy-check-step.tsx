@@ -51,6 +51,7 @@ const INVESTOR_VALUE_LABELS: Record<string, string> = {
   INTERMEDIATE: "Intermédiaire",
   NOVICE: "Débutant",
   PROFESSIONAL: "Professionnel",
+  INFORMED: "Averti",
   RETAIL: "Non professionnel",
   // Risk profile
   CONSERVATIVE: "Prudent",
@@ -79,6 +80,7 @@ const INVESTOR_VALUE_LABELS: Record<string, string> = {
   NOT_INTERESTED: "Non intéressé",
   CONSIDERS: "Pris en compte",
   DOES_NOT_CONSIDER: "Non pris en compte",
+  CONSIDERS_PAI: "Pris en compte",
   // Boolean
   TRUE: "Oui",
   FALSE: "Non",
