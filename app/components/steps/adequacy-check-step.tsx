@@ -162,9 +162,9 @@ function generatePdfReport(data: {
   <title>Rapport d'adéquation — ${data.productName}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #0d2e2b; line-height: 1.6; }
-    @page { size: A4; margin: 2cm; }
-    .page { page-break-after: always; padding: 0; }
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #0d2e2b; line-height: 1.6; margin: 0; padding: 0; }
+    @page { size: A4; margin: 2.5cm; }
+    .page { page-break-after: always; padding: 48px 56px; }
     .page:last-child { page-break-after: avoid; }
 
     /* Cover */
