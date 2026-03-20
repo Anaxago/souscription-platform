@@ -15,13 +15,40 @@ interface Props {
   onComplete: () => void;
 }
 
-const RISK_LABELS: Record<string, string> = {
-  CONSERVATIVE: "Conservateur",
-  MODERATE: "Modéré",
-  BALANCED: "Équilibré",
-  DYNAMIC: "Dynamique",
-  AGGRESSIVE: "Agressif",
-};
+const RISK_LEVELS: { key: string; label: string }[] = [
+  { key: "CONSERVATIVE", label: "Prudent" },
+  { key: "MODERATE", label: "Modéré" },
+  { key: "BALANCED", label: "Équilibré" },
+  { key: "DYNAMIC", label: "Dynamique" },
+  { key: "AGGRESSIVE", label: "Offensif" },
+];
+
+function RiskGauge({ level }: { level: string }) {
+  const idx = RISK_LEVELS.findIndex((r) => r.key === level);
+  const active = idx >= 0 ? idx + 1 : 0;
+  const label = idx >= 0 ? RISK_LEVELS[idx].label : level;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+      <span style={{ fontSize: 14, fontWeight: 600, color: "var(--clr-obsidian)" }}>
+        {label} ({active}/{RISK_LEVELS.length})
+      </span>
+      <div style={{ display: "flex", gap: 3 }}>
+        {RISK_LEVELS.map((r, i) => (
+          <div
+            key={r.key}
+            style={{
+              width: 24,
+              height: 8,
+              borderRadius: 4,
+              background: i < active ? "var(--clr-primary)" : "var(--clr-stroke-dark)",
+              transition: "background 0.2s ease",
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const ENVELOPE_LABELS: Record<string, string> = {
   AV: "Assurance-vie",
@@ -79,9 +106,9 @@ export default function ProductSummaryStep({
   const amount = basket?.lines?.[0]?.requestedAmount ?? null;
   const envelopeType = basket?.envelopeTarget?.envelopeType ?? null;
 
-  const summaryItems = [
+  const summaryItems: { label: string; value: string; custom?: React.ReactNode }[] = [
     { label: "Produit", value: productName ?? "—" },
-    ...(riskTolerance ? [{ label: "Profil de risque", value: RISK_LABELS[riskTolerance] ?? riskTolerance }] : []),
+    ...(riskTolerance ? [{ label: "Profil de risque", value: "", custom: <RiskGauge level={riskTolerance} /> }] : []),
     { label: "Enveloppe", value: envelopeType ? (ENVELOPE_LABELS[envelopeType] ?? envelopeType) : "Non sélectionnée" },
     { label: "Montant engagé", value: amount ? formatEuros(amount / 100) : "Non défini" },
   ];
@@ -111,7 +138,7 @@ export default function ProductSummaryStep({
             background: i % 2 === 0 ? "var(--clr-off-white)" : "white",
           }}>
             <span style={{ fontSize: 14, color: "var(--clr-cashmere)", fontWeight: 500 }}>{item.label}</span>
-            <span style={{ fontSize: 15, color: "var(--clr-obsidian)", fontWeight: 600 }}>{item.value}</span>
+            {item.custom ?? <span style={{ fontSize: 15, color: "var(--clr-obsidian)", fontWeight: 600 }}>{item.value}</span>}
           </div>
         ))}
       </div>
