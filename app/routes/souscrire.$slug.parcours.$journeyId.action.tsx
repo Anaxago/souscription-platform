@@ -34,7 +34,8 @@ type ActionPayload =
   | { type: "evaluate-knowledge-quiz"; journeyId: string; stepId: string; investorType: string; performedBy: string; answers: { questionId: string; selectedChoiceKeys: string[] }[] }
   | { type: "submit-verification-question"; journeyId: string; questionType: string; answer: string }
   | { type: "fetch-investor-profile"; investorId: string }
-  | { type: "fetch-le-investor-profile"; investorId: string };
+  | { type: "fetch-le-investor-profile"; investorId: string }
+  | { type: "create-order"; investorId: string; investorType: string; marketingProductId: string; journeyId: string; orderLines: { lineType: string; financialInstrumentId?: string | null; shareId?: string | null; totalAmountAmount: number; totalAmountCurrency: string }[]; envelopeTarget: { targetType: string; envelopeType?: string; provider?: string } };
 
 function errorResponse(message: string, status: number) {
   return Response.json({ error: message }, { status });
@@ -654,6 +655,26 @@ export async function action({ request }: Route.ActionArgs) {
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         return errorResponse((err as Record<string, string>).message ?? "Erreur activation investisseur PM", res.status);
+      }
+      return Response.json(await res.json());
+    }
+
+    /* ── Create subscription order ── */
+    case "create-order": {
+      const res = await api("/subscription-orders", {
+        method: "POST",
+        body: JSON.stringify({
+          investorId: body.investorId,
+          investorType: body.investorType,
+          marketingProductId: body.marketingProductId,
+          journeyId: body.journeyId,
+          orderLines: body.orderLines,
+          envelopeTarget: body.envelopeTarget,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return errorResponse((err as Record<string, string>).message ?? "Erreur création ordre", res.status);
       }
       return Response.json(await res.json());
     }

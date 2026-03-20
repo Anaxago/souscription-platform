@@ -227,6 +227,88 @@ export function meta({ data }: Route.MetaArgs) {
    Component
    ────────────────────────────────────────────── */
 
+function JourneyCompleted({ journey, marketingProductName, actionUrl }: { journey: SubscriptionJourney; marketingProductName: string | null; actionUrl: string }) {
+  const [ordering, setOrdering] = useState(false);
+  const [orderId, setOrderId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const basket = journey.basket as unknown as {
+    lines: { lineType: string; financialInstrumentId?: string | null; shareId?: string | null; requestedAmount: number | null }[];
+    envelopeTarget: { targetType?: string; envelopeType?: string; provider?: string | null } | null;
+  } | null;
+
+  async function handleCreateOrder() {
+    setOrdering(true);
+    setError(null);
+    try {
+      const res = await fetch(actionUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "create-order",
+          investorId: journey.investorId,
+          investorType: journey.investorType === "LEGAL" ? "LEGAL" : "NATURAL",
+          marketingProductId: journey.marketingProductId,
+          journeyId: journey.id,
+          orderLines: (basket?.lines ?? []).map((line) => ({
+            lineType: line.lineType,
+            financialInstrumentId: line.financialInstrumentId ?? null,
+            shareId: line.shareId ?? null,
+            totalAmountAmount: line.requestedAmount ?? 0,
+            totalAmountCurrency: "EUR",
+          })),
+          envelopeTarget: {
+            targetType: basket?.envelopeTarget?.targetType ?? "TO_CREATE",
+            envelopeType: basket?.envelopeTarget?.envelopeType,
+            provider: basket?.envelopeTarget?.provider ?? undefined,
+          },
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as Record<string, string>).error ?? `Erreur ${res.status}`);
+      }
+      const order = await res.json();
+      setOrderId((order as { id: string }).id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erreur");
+    } finally {
+      setOrdering(false);
+    }
+  }
+
+  if (orderId) {
+    return (
+      <div style={{ padding: "var(--space-2xl) var(--space-xl)", background: "var(--clr-primary-light)", borderRadius: "var(--radius-md)", textAlign: "center" }}>
+        <div style={{ width: 72, height: 72, borderRadius: "50%", background: "var(--clr-success-light)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto var(--space-md)" }}>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+        </div>
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 300, color: "var(--clr-obsidian)", marginBottom: "var(--space-xs)" }}>Ordre créé</h2>
+        <p style={{ fontSize: 15, color: "var(--clr-cashmere)", maxWidth: 420, margin: "0 auto var(--space-sm)" }}>
+          Votre ordre de souscription pour <strong>{marketingProductName}</strong> a été transmis avec succès.
+        </p>
+        <p style={{ fontSize: 13, color: "var(--clr-cashmere)", fontFamily: "monospace" }}>
+          Réf. {orderId.slice(0, 8)}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: "var(--space-2xl) var(--space-xl)", background: "var(--clr-primary-light)", borderRadius: "var(--radius-md)", textAlign: "center" }}>
+      <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="1.5" style={{ margin: "0 auto var(--space-md)" }}><circle cx="12" cy="12" r="10" /><polyline points="9 12 11 14 15 10" /></svg>
+      <h2 style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 300, color: "var(--clr-obsidian)", marginBottom: "var(--space-xs)" }}>Parcours terminé</h2>
+      <p style={{ fontSize: 15, color: "var(--clr-cashmere)", maxWidth: 400, margin: "0 auto var(--space-lg)" }}>
+        Toutes les étapes sont complétées. Vous pouvez maintenant passer l'ordre de souscription.
+      </p>
+      {error && <div className="form-error" style={{ marginBottom: "var(--space-md)" }}>{error}</div>}
+      <button className="btn-primary" style={{ width: "100%", justifyContent: "center" }} disabled={ordering} onClick={handleCreateOrder}>
+        {ordering ? "Création en cours..." : "Passer l'ordre de souscription"}
+      </button>
+    </div>
+  );
+}
+
 export default function ParcoursSouscription({ loaderData }: Route.ComponentProps) {
   const { journey, slug, personKernelId, legalEntityKernelId, marketingProduct, eligibleEnvelopes, riskTolerance } = loaderData;
   const revalidator = useRevalidator();
@@ -484,13 +566,9 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
             </div>
           )}
 
-          {/* Journey completed */}
+          {/* Journey completed — create order */}
           {journey.status === "COMPLETED" && (
-            <div style={{ padding: "var(--space-2xl) var(--space-xl)", background: "var(--clr-primary-light)", borderRadius: "var(--radius-md)", textAlign: "center" }}>
-              <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="1.5" style={{ margin: "0 auto var(--space-md)" }}><circle cx="12" cy="12" r="10" /><polyline points="9 12 11 14 15 10" /></svg>
-              <h2 style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 300, color: "var(--clr-obsidian)", marginBottom: "var(--space-xs)" }}>Parcours terminé</h2>
-              <p style={{ fontSize: 15, color: "var(--clr-cashmere)", maxWidth: 400, margin: "0 auto" }}>Votre souscription est en cours de traitement. Vous recevrez un email de confirmation.</p>
-            </div>
+            <JourneyCompleted journey={journey} marketingProductName={marketingProduct?.name ?? null} actionUrl={actionUrl} />
           )}
         </section>
       </main>
