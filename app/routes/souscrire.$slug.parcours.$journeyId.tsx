@@ -178,15 +178,22 @@ export async function loader({ params }: Route.LoaderArgs) {
       investorDisplayName = (investor.displayName as string) ?? null;
     }
 
-    // Fetch account for email/phone (best-effort)
+    // Fetch account for email/phone: person kernel → person → account
     try {
-      const accountsRes = await api("/accounts?pageSize=50");
-      if (accountsRes.ok) {
-        const accountsBody = (await accountsRes.json()) as { data: { email: string; phone: string | null; personId: string }[] };
-        const account = accountsBody.data?.find((a) => a.personId === personKernelId);
-        if (account) {
-          investorEmail = account.email;
-          investorPhone = account.phone ?? null;
+      const [personsRes, accountsRes] = await Promise.all([
+        api("/persons?pageSize=50"),
+        api("/accounts?pageSize=50"),
+      ]);
+      if (personsRes.ok && accountsRes.ok) {
+        const persons = (await personsRes.json()) as { data: { id: string; personKernelId: string | null }[] };
+        const person = persons.data?.find((p) => p.personKernelId === personKernelId);
+        if (person) {
+          const accounts = (await accountsRes.json()) as { data: { email: string; phone: string | null; personId: string }[] };
+          const account = accounts.data?.find((a) => a.personId === person.id);
+          if (account) {
+            investorEmail = account.email;
+            investorPhone = account.phone ?? null;
+          }
         }
       }
     } catch { /* non-blocking */ }

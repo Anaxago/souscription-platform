@@ -719,9 +719,43 @@ export default function AdequacyCheckStep({
       )}
 
       {result === "INADEQUATE" && (
-        <button className="btn-primary" style={{ width: "100%", justifyContent: "center" }} disabled={overriding} onClick={handleOverride}>
-          {overriding ? "..." : "J'accepte les risques et je souhaite continuer"}
-        </button>
+        <>
+          {/* Advisor card */}
+          <div style={{
+            border: "1px solid var(--clr-stroke-dark)", borderRadius: "var(--radius-md)",
+            padding: "var(--space-md)", marginBottom: "var(--space-md)",
+            display: "flex", gap: "var(--space-md)", alignItems: "center",
+          }}>
+            <div style={{
+              width: 48, height: 48, borderRadius: "50%", background: "var(--clr-primary)",
+              display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+              </svg>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: "var(--clr-obsidian)" }}>Votre conseiller Stanza</div>
+              <div style={{ fontSize: 13, color: "var(--clr-cashmere)" }}>
+                Ce produit ne correspond pas entièrement à votre profil. Un conseiller peut vous accompagner dans votre démarche.
+              </div>
+            </div>
+            <button
+              onClick={() => window.open("https://calendly.com/stanza-conseil", "_blank")}
+              style={{
+                padding: "8px 16px", background: "var(--clr-primary)", color: "white", border: "none",
+                borderRadius: "var(--radius-pill)", fontSize: 13, fontWeight: 600,
+                fontFamily: "var(--font-display)", cursor: "pointer", whiteSpace: "nowrap",
+              }}
+            >
+              Prendre RDV
+            </button>
+          </div>
+
+          <button className="btn-primary" style={{ width: "100%", justifyContent: "center" }} disabled={overriding} onClick={handleOverride}>
+            {overriding ? "..." : "J'accepte les risques et je souhaite continuer"}
+          </button>
+        </>
       )}
 
       {(result === "ADEQUATE" || result === "OVERRIDDEN") && (
