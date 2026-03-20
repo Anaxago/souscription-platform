@@ -48,7 +48,6 @@ export default function ProductSummaryStep({
   onComplete,
 }: Props) {
   const [submitting, setSubmitting] = useState(false);
-  const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function callAction(payload: Record<string, unknown>) {
@@ -65,16 +64,12 @@ export default function ProductSummaryStep({
   }
 
   async function handleConfirm() {
-    console.log("[ProductSummary] handleConfirm called", { journeyId, stepId });
     setSubmitting(true);
     setError(null);
     try {
-      const result = await callAction({ type: "complete", journeyId, stepId });
-      console.log("[ProductSummary] complete succeeded", result);
-      setConfirmed(true);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      await callAction({ type: "complete", journeyId, stepId });
+      onComplete();
     } catch (e) {
-      console.error("[ProductSummary] complete FAILED", e);
       setError(e instanceof Error ? e.message : "Erreur");
     } finally {
       setSubmitting(false);
@@ -90,34 +85,6 @@ export default function ProductSummaryStep({
     { label: "Enveloppe", value: envelopeType ? (ENVELOPE_LABELS[envelopeType] ?? envelopeType) : "Non sélectionnée" },
     { label: "Montant engagé", value: amount ? formatEuros(amount / 100) : "Non défini" },
   ];
-
-  if (confirmed) {
-    return (
-      <div className="step-panel">
-        <div style={{ textAlign: "center", padding: "var(--space-lg) 0" }}>
-          <div style={{
-            width: 72, height: 72, borderRadius: "50%",
-            background: "var(--clr-success-light)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            margin: "0 auto var(--space-md)",
-          }}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          </div>
-          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 400, color: "var(--clr-obsidian)", marginBottom: "var(--space-xs)" }}>
-            Souscription confirmée
-          </h2>
-          <p style={{ fontSize: 15, color: "var(--clr-cashmere)", maxWidth: 420, margin: "0 auto var(--space-lg)" }}>
-            Votre souscription a été enregistrée. Vous pouvez poursuivre les étapes restantes.
-          </p>
-          <button className="btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={onComplete}>
-            Continuer
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="step-panel">
