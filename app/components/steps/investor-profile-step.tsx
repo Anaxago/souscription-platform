@@ -164,10 +164,30 @@ export default function InvestorProfileStep({
     });
   }
 
+  const [autoAdvance, setAutoAdvance] = useState(false);
+
+  // Auto-advance single-question categories after 500ms
+  useEffect(() => {
+    if (autoAdvance && currentCat && currentCat.questions.length === 1 && allQuestionsAnsweredInCategory(currentCat)) {
+      const timer = setTimeout(() => {
+        setAutoAdvance(false);
+        handleNextCategory();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoAdvance, answers]);
+
   function handleSingleAnswer(questionId: string, choiceKey: string) {
     setAnswers((prev) => ({ ...prev, [questionId]: choiceKey }));
-    // Auto-scroll to next question
+
     if (currentCat) {
+      // If single question in category → flag for auto-advance
+      if (currentCat.questions.length === 1) {
+        setAutoAdvance(true);
+        return;
+      }
+      // Auto-scroll to next question
       const qIndex = currentCat.questions.findIndex((q) => q.id === questionId);
       const nextQ = currentCat.questions[qIndex + 1];
       if (nextQ) {
