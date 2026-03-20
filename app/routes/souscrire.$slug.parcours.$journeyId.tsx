@@ -168,9 +168,11 @@ export async function loader({ params }: Route.LoaderArgs) {
       personKernelId = investor.operatedBy;
       riskTolerance = investor.riskTolerance ?? null;
     } else {
-      const investor = (await investorRes.json()) as { personKernelId: string; riskTolerance?: string | null };
-      personKernelId = investor.personKernelId;
-      riskTolerance = investor.riskTolerance ?? null;
+      const investor = (await investorRes.json()) as Record<string, unknown>;
+      personKernelId = (investor.personKernelId as string) ?? null;
+      riskTolerance = (investor.riskTolerance as string) ?? null;
+      console.log("[Loader] investor fields:", Object.keys(investor).join(", "));
+      console.log("[Loader] riskTolerance:", investor.riskTolerance, "| riskProfile:", investor.riskProfile);
     }
   }
 
