@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface Props {
   journeyId: string;
@@ -210,6 +210,7 @@ export default function AdequacyCheckStep({
   const [lastCheckId, setLastCheckId] = useState<string | null>(state?.lastCheckId ?? null);
   const [criteria, setCriteria] = useState<CriterionResult[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [autoLaunched, setAutoLaunched] = useState(false);
 
   async function callAction(payload: Record<string, unknown>) {
     const res = await fetch(actionUrl, {
@@ -223,6 +224,23 @@ export default function AdequacyCheckStep({
     }
     return res.json();
   }
+
+  // Auto-launch evaluation or fetch existing criteria on mount
+  useEffect(() => {
+    if (!result && !autoLaunched) {
+      setAutoLaunched(true);
+      handleEvaluate();
+    } else if (result && lastCheckId && criteria.length === 0) {
+      // Result already exists — fetch criteria details
+      callAction({ type: "fetch-adequacy-check", checkId: lastCheckId })
+        .then((check) => {
+          const details = (check as { details?: { criteriaResults?: CriterionResult[] } }).details;
+          if (details?.criteriaResults) setCriteria(details.criteriaResults);
+        })
+        .catch(() => { /* non-blocking */ });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleEvaluate() {
     setChecking(true);
