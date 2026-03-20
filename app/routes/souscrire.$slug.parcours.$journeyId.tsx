@@ -525,6 +525,11 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
       const catResults = (s.state as { categoryResults?: { validated: boolean }[] } | null)?.categoryResults;
       return catResults != null && catResults.some((c) => c.validated);
     }
+    // ADEQUACY_CHECK with result already set (overridden or adequate) — step done
+    if (s.stepType === "ADEQUACY_CHECK") {
+      const result = (s.state as { result?: string } | null)?.result;
+      return result === "ADEQUATE" || result === "OVERRIDDEN";
+    }
     return false;
   };
 
@@ -757,8 +762,8 @@ export default function ParcoursSouscription({ loaderData }: Route.ComponentProp
             </div>
           )}
 
-          {/* Journey completed — create order */}
-          {journey.status === "COMPLETED" && (
+          {/* Journey completed — create order (also when all steps are effectively done) */}
+          {(journey.status === "COMPLETED" || (!currentStep && completedCount === applicableSteps.length)) && (
             <JourneyCompleted journey={journey} marketingProductName={marketingProduct?.name ?? null} riskTolerance={riskTolerance} actionUrl={actionUrl} />
           )}
         </section>
