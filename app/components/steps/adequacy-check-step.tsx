@@ -3,7 +3,9 @@ import { useState, useEffect } from "react";
 interface Props {
   journeyId: string;
   stepId: string;
+  investorId: string;
   investorType: string;
+  financialInstrumentId: string | null;
   productName: string | null;
   envelopeType: string | null;
   amount: number | null;
@@ -196,7 +198,9 @@ function generatePdfReport(data: {
 export default function AdequacyCheckStep({
   journeyId,
   stepId,
+  investorId,
   investorType,
+  financialInstrumentId,
   productName,
   envelopeType,
   amount,
@@ -232,7 +236,7 @@ export default function AdequacyCheckStep({
       handleEvaluate();
     } else if (result && lastCheckId && criteria.length === 0) {
       // Result already exists — fetch criteria details
-      callAction({ type: "fetch-adequacy-check", checkId: lastCheckId })
+      callAction({ type: "fetch-adequacy-check", investorId, financialInstrumentId: financialInstrumentId ?? "" })
         .then((check) => {
           const details = (check as { details?: { criteriaResults?: CriterionResult[] } }).details;
           if (details?.criteriaResults) setCriteria(details.criteriaResults);
@@ -261,7 +265,7 @@ export default function AdequacyCheckStep({
         // Fetch detailed criteria results
         if (updatedStep.state.lastCheckId) {
           try {
-            const check = await callAction({ type: "fetch-adequacy-check", checkId: updatedStep.state.lastCheckId });
+            const check = await callAction({ type: "fetch-adequacy-check", investorId, financialInstrumentId: financialInstrumentId ?? "" });
             const details = (check as { details?: { criteriaResults?: CriterionResult[] } }).details;
             if (details?.criteriaResults) {
               setCriteria(details.criteriaResults);
