@@ -16,20 +16,20 @@
   --secondary:           oklch(0.92 0.015 85);
   --secondary-foreground: oklch(0.20 0.05 155);
   --muted:               oklch(0.92 0.015 85);
-  --muted-foreground:    oklch(0.45 0.04 155);
+  --muted-foreground:    oklch(0.35 0.04 155);
   --accent:              oklch(0.62 0.10 75);
-  --accent-foreground:   oklch(0.10 0.02 85);
+  --accent-foreground:   oklch(0.99 0.005 85);
   --destructive:         oklch(0.55 0.18 25);
   --destructive-foreground: oklch(0.98 0.005 85);
-  --border:              oklch(0.88 0.018 85);
+  --border:              oklch(0.82 0.02 85);
   --input:               oklch(0.92 0.015 85);
   --ring:                oklch(0.62 0.10 75);
 
   /* Opacités texte — sections claires */
-  --text-body:           rgba(28, 58, 46, 0.65);
-  --text-caption:        rgba(28, 58, 46, 0.44);
-  --text-subtle:         rgba(28, 58, 46, 0.28);
-  --text-border:         rgba(28, 58, 46, 0.12);
+  --text-body:           rgba(28, 58, 46, 0.85);
+  --text-caption:        rgba(28, 58, 46, 0.60);
+  --text-subtle:         rgba(28, 58, 46, 0.40);
+  --text-border:         rgba(28, 58, 46, 0.15);
 
   /* Opacités texte — sections sombres */
   --text-dark-heading:   rgba(245, 240, 232, 0.97);
@@ -39,8 +39,8 @@
 
   /* Surfaces spéciales */
   --glass-white:         rgba(255, 255, 255, 0.72);
-  --input-bg:            rgba(28, 58, 46, 0.03);
-  --input-border:        rgba(28, 58, 46, 0.12);
+  --input-bg:            rgba(28, 58, 46, 0.04);
+  --input-border:        rgba(28, 58, 46, 0.18);
 
   /* Typographie */
   --font-serif:   'Cormorant Garamond', 'Georgia', serif;
@@ -178,9 +178,9 @@ html, body {
 .ds4-body {
   font-family: var(--font-body);
   font-size: var(--text-base);
-  font-weight: 300;
+  font-weight: 400;
   line-height: 1.6;
-  color: var(--text-body);
+  color: var(--foreground);
   background: var(--background);
   -webkit-font-smoothing: antialiased;
 }
