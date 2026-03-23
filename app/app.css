@@ -100,30 +100,84 @@
 }
 
 /* ──────────────────────────────────────────────
-   Animations — Wealth Management 3.0
-   GPU-accelerated: only animate transform + opacity
+   Stanza — Keyframes
    ────────────────────────────────────────────── */
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translate3d(0, 12px, 0); }
-  to { opacity: 1; transform: translate3d(0, 0, 0); }
+
+/* Apparition depuis le bas */
+@keyframes sz-fade-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0);    }
 }
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+
+/* Zoom lent du hero (22s, infini) */
+@keyframes sz-hero-zoom {
+  from { transform: scale(1.05); }
+  to   { transform: scale(1.00); }
 }
-@keyframes scaleIn {
-  from { opacity: 0; transform: scale3d(0.96, 0.96, 1); }
-  to { opacity: 1; transform: scale3d(1, 1, 1); }
+
+/* Pulsation du scroll indicator */
+@keyframes sz-scroll-pulse {
+  0%, 100% { opacity: 0.3; transform: scaleY(0.85); }
+  50%       { opacity: 1;   transform: scaleY(1);    }
 }
-@keyframes slideInRight {
-  from { opacity: 0; transform: translate3d(20px, 0, 0); }
-  to { opacity: 1; transform: translate3d(0, 0, 0); }
-}
+
+/* Stepper check pop */
 @keyframes checkPop {
   0% { transform: scale3d(0, 0, 1); opacity: 0; }
   60% { transform: scale3d(1.15, 1.15, 1); }
   100% { transform: scale3d(1, 1, 1); opacity: 1; }
 }
+
+/* Spinner */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Classes d'animation hero (cascade) ─────────────────── */
+.sz-animate-hero-zoom    { animation: sz-hero-zoom 22s ease-in-out infinite alternate; }
+.sz-animate-scroll-pulse { animation: sz-scroll-pulse 2.5s ease-in-out infinite; }
+
+/* Délais en cascade pour les éléments du hero */
+.sz-fade-up-1 { opacity: 0; animation: sz-fade-up 1s 0.30s forwards; }
+.sz-fade-up-2 { opacity: 0; animation: sz-fade-up 1s 0.55s forwards; }
+.sz-fade-up-3 { opacity: 0; animation: sz-fade-up 1s 0.80s forwards; }
+.sz-fade-up-4 { opacity: 0; animation: sz-fade-up 1s 1.05s forwards; }
+.sz-fade-up-5 { opacity: 0; animation: sz-fade-up 1s 1.50s forwards; }
+
+/* ── Reveal au scroll (IntersectionObserver) ─────────────── */
+.sz-reveal,
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity 0.9s ease, transform 0.9s ease;
+}
+.sz-reveal.sz-reveal--visible,
+[data-reveal].is-visible { opacity: 1; transform: translateY(0); }
+.sz-reveal-d1, [data-reveal-delay="1"] { transition-delay: 0.10s; }
+.sz-reveal-d2, [data-reveal-delay="2"] { transition-delay: 0.22s; }
+.sz-reveal-d3, [data-reveal-delay="3"] { transition-delay: 0.34s; }
+
+/* ── Utilities globales Stanza ──────────────────────────── */
+.sz-font-serif { font-family: var(--font-serif); }
+.sz-font-sans  { font-family: var(--font-body); }
+
+.sz-text-gold       { color: var(--gold); }
+.sz-text-gold-light { color: var(--text-dark-accent); }
+.sz-text-forest     { color: var(--forest); }
+.sz-text-muted      { color: var(--muted-foreground); }
+.sz-text-subtle     { color: var(--text-subtle); }
+
+.sz-bg-gold         { background-color: var(--gold); }
+.sz-bg-forest       { background-color: var(--forest); }
+.sz-bg-card         { background-color: var(--card); }
+
+.sz-border-gold     { border-color: var(--gold); }
+.sz-border-forest   { border-color: var(--forest); }
+
+/* Scrollbar discrète */
+.sz-scrollbar::-webkit-scrollbar       { width: 3px; }
+.sz-scrollbar::-webkit-scrollbar-track { background: var(--text-subtle); }
+.sz-scrollbar::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 2px; }
 
 /* Respect user preference for reduced motion */
 @media (prefers-reduced-motion: reduce) {
@@ -732,9 +786,6 @@ html, body {
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
 
 /* ──────────────────────────────────────────────
    DS4 — Video section
@@ -1241,11 +1292,11 @@ html, body {
   border: none;
   background: transparent;
   padding: 0;
-  animation: fadeInUp 0.5s var(--ease-out-expo) both;
+  animation: sz-fade-up 0.5s var(--ease-out-expo) both;
 }
 .journey-content > .step-panel .step-panel__header {
   margin-bottom: var(--space-xl);
-  animation: fadeInUp 0.6s var(--ease-out-expo) 0.1s both;
+  animation: sz-fade-up 0.6s var(--ease-out-expo) 0.1s both;
 }
 .journey-content > .step-panel .step-panel__title {
   font-size: 28px;
@@ -1620,14 +1671,3 @@ html, body {
   }
 }
 
-/* ──────────────────────────────────────────────
-   DS4 — Scroll reveal animations
-   ────────────────────────────────────────────── */
-[data-reveal] {
-  opacity: 0; transform: translateY(24px);
-  transition: opacity 0.7s ease, transform 0.7s ease;
-}
-[data-reveal].is-visible { opacity: 1; transform: translateY(0); }
-[data-reveal-delay="1"] { transition-delay: 0.1s; }
-[data-reveal-delay="2"] { transition-delay: 0.2s; }
-[data-reveal-delay="3"] { transition-delay: 0.3s; }
